@@ -23,4 +23,5 @@ pull-vids.exe
 *.test
 *.out
 vendor/
+dist/
 

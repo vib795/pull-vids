@@ -17,53 +17,105 @@ A free, open-source CLI tool for downloading YouTube videos and audio. Inspired 
 
 ## Installation
 
-### Requirements
+### Quick Install (Recommended)
 
-- ffmpeg (for audio conversion and video merging)
-- yt-dlp (for YouTube downloading)
-- Go 1.18+ (for building from source)
+**macOS / Linux:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/vib795/pull-vids/main/install.sh | bash
+```
 
-### Install Dependencies
+**Windows (PowerShell as Administrator):**
+```powershell
+irm https://raw.githubusercontent.com/vib795/pull-vids/main/install.ps1 | iex
+```
+
+### Manual Installation
+
+#### Option 1: Download Pre-built Binary
+
+Download the latest release for your platform from [Releases](https://github.com/vib795/pull-vids/releases):
 
 **macOS:**
 ```bash
-brew install ffmpeg yt-dlp go
+# Intel Mac
+curl -L https://github.com/vib795/pull-vids/releases/latest/download/pull-vids-darwin-amd64 -o pull-vids
+chmod +x pull-vids
+sudo mv pull-vids /usr/local/bin/
+
+# Apple Silicon (M1/M2/M3)
+curl -L https://github.com/vib795/pull-vids/releases/latest/download/pull-vids-darwin-arm64 -o pull-vids
+chmod +x pull-vids
+sudo mv pull-vids /usr/local/bin/
 ```
 
-**Ubuntu/Debian:**
+**Linux:**
 ```bash
-sudo apt update
-sudo apt install ffmpeg golang-go
-pip install yt-dlp
+# AMD64
+curl -L https://github.com/vib795/pull-vids/releases/latest/download/pull-vids-linux-amd64 -o pull-vids
+chmod +x pull-vids
+sudo mv pull-vids /usr/local/bin/
+
+# ARM64
+curl -L https://github.com/vib795/pull-vids/releases/latest/download/pull-vids-linux-arm64 -o pull-vids
+chmod +x pull-vids
+sudo mv pull-vids /usr/local/bin/
 ```
 
 **Windows:**
-```bash
-winget install ffmpeg golang
-pip install yt-dlp
-```
+1. Download [pull-vids-windows-amd64.exe](https://github.com/vib795/pull-vids/releases/latest/download/pull-vids-windows-amd64.exe)
+2. Rename to `pull-vids.exe`
+3. Move to a directory in your PATH (e.g., `C:\Program Files\pull-vids\`)
 
-### Build pull-vids
+#### Option 2: Build from Source
 
+**Requirements:**
+- Go 1.18 or higher
+- Git
+
+**Build:**
 ```bash
 # Clone the repository
 git clone https://github.com/vib795/pull-vids.git
 cd pull-vids
 
-# Build the binary
-go build -o pull-vids main.go
-
-# Or use make
+# Build for your platform
 make build
 
-# Optional: Install to system PATH
-sudo mv pull-vids /usr/local/bin/
-# Or on Windows, add to PATH
+# Or build for all platforms
+make build-all
+
+# Install to system
+make install
 ```
 
-**Pre-built binaries** (coming soon):
-- Download from [Releases](https://github.com/vib795/pull-vids/releases)
-- No build required, just download and run!
+### Install Dependencies
+
+**pull-vids requires ffmpeg and yt-dlp to work:**
+
+**macOS:**
+```bash
+brew install ffmpeg yt-dlp
+```
+
+**Ubuntu/Debian:**
+```bash
+sudo apt update
+sudo apt install ffmpeg
+pip install yt-dlp
+```
+
+**Windows:**
+```powershell
+winget install ffmpeg
+pip install yt-dlp
+```
+
+**Verify installation:**
+```bash
+ffmpeg -version
+yt-dlp --version
+pull-vids --version
+```
 
 ## Usage
 
