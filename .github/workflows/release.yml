@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build and Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Build binaries
+        run: make build-all
+
+      - name: Create release archives
+        run: make release
+
+      - name: Generate checksums
+        run: make checksums
+
+      - name: Create .deb package
+        run: make deb
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/releases/*
+            dist/packages/*
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update Homebrew Formula
+        run: |
+          # Calculate checksums for Homebrew
+          DARWIN_AMD64_SHA=$(shasum -a 256 dist/releases/pull-vids-darwin-amd64.tar.gz | awk '{print $1}')
+          DARWIN_ARM64_SHA=$(shasum -a 256 dist/releases/pull-vids-darwin-arm64.tar.gz | awk '{print $1}')
+          LINUX_AMD64_SHA=$(shasum -a 256 dist/releases/pull-vids-linux-amd64.tar.gz | awk '{print $1}')
+          LINUX_ARM64_SHA=$(shasum -a 256 dist/releases/pull-vids-linux-arm64.tar.gz | awk '{print $1}')
+
+          # Update Formula (would need to commit to tap repository)
+          echo "Darwin AMD64 SHA256: $DARWIN_AMD64_SHA"
+          echo "Darwin ARM64 SHA256: $DARWIN_ARM64_SHA"
+          echo "Linux AMD64 SHA256: $LINUX_AMD64_SHA"
+          echo "Linux ARM64 SHA256: $LINUX_ARM64_SHA"

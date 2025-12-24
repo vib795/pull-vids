@@ -17,7 +17,43 @@ A free, open-source CLI tool for downloading YouTube videos and audio. Inspired 
 
 ## Installation
 
-### Quick Install (Recommended)
+### Package Managers (Recommended)
+
+**macOS (Homebrew):**
+```bash
+brew tap vib795/pull-vids
+brew install pull-vids
+```
+
+**Windows (Chocolatey):**
+```powershell
+choco install pull-vids
+```
+
+**Windows (Scoop):**
+```powershell
+scoop bucket add pull-vids https://github.com/vib795/scoop-pull-vids
+scoop install pull-vids
+```
+
+**Ubuntu/Debian (APT):**
+```bash
+sudo add-apt-repository ppa:vib795/pull-vids
+sudo apt update
+sudo apt install pull-vids
+```
+
+**Arch Linux (AUR):**
+```bash
+yay -S pull-vids
+```
+
+**Linux (Snap):**
+```bash
+sudo snap install pull-vids
+```
+
+### Quick Install Script
 
 **macOS / Linux:**
 ```bash

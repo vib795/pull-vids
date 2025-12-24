@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>pull-vids</id>
+    <version>0.2.0</version>
+    <packageSourceUrl>https://github.com/vib795/pull-vids</packageSourceUrl>
+    <owners>vib795</owners>
+    <title>pull-vids</title>
+    <authors>pull-vids contributors</authors>
+    <projectUrl>https://github.com/vib795/pull-vids</projectUrl>
+    <iconUrl>https://raw.githubusercontent.com/vib795/pull-vids/main/logo.png</iconUrl>
+    <licenseUrl>https://github.com/vib795/pull-vids/blob/main/LICENSE</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <projectSourceUrl>https://github.com/vib795/pull-vids</projectSourceUrl>
+    <docsUrl>https://github.com/vib795/pull-vids/blob/main/README.md</docsUrl>
+    <bugTrackerUrl>https://github.com/vib795/pull-vids/issues</bugTrackerUrl>
+    <tags>youtube downloader video audio cli mp3 mp4 ffmpeg yt-dlp</tags>
+    <summary>Free CLI tool for downloading YouTube videos and audio</summary>
+    <description>
+# pull-vids
+
+A free, open-source CLI tool for downloading YouTube videos and audio. Inspired by tools like Downie and PullTube, but completely free!
+
+## Features
+
+- Download YouTube videos in various qualities (360p to 4K)
+- Download audio-only (MP3, M4A, etc.)
+- Support for playlists
+- Beautiful real-time progress bars
+- Cross-platform (Windows, macOS, Linux)
+- Single binary - no dependencies to install
+- Fast startup - &lt; 1ms
+- No ads, no paywalls, just downloads
+
+## Requirements
+
+This package requires:
+- ffmpeg (install with: `choco install ffmpeg`)
+- yt-dlp (install with: `pip install yt-dlp`)
+
+## Usage
+
+```
+pull-vids "https://www.youtube.com/watch?v=VIDEO_ID"
+pull-vids -a "https://www.youtube.com/watch?v=VIDEO_ID"  # Audio only
+pull-vids -q 720p "https://www.youtube.com/watch?v=VIDEO_ID"  # Specific quality
+```
+    </description>
+    <releaseNotes>https://github.com/vib795/pull-vids/releases</releaseNotes>
+    <dependencies>
+      <dependency id="ffmpeg" version="4.4.0" />
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>

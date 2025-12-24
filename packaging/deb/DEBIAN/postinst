@@ -1,0 +1,13 @@
+#!/bin/bash
+set -e
+
+echo ""
+echo "pull-vids has been installed!"
+echo ""
+echo "Note: You also need to install yt-dlp:"
+echo "  sudo pip install yt-dlp"
+echo ""
+echo "Run 'pull-vids --help' to get started!"
+echo ""
+
+exit 0

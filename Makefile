@@ -66,4 +66,25 @@ deps: ## Download Go dependencies
 run: build ## Build and run with help
 	./$(BINARY_NAME) --help
 
+# Package creation targets
+deb: build-all ## Create .deb package for Debian/Ubuntu
+	@echo "Creating .deb package..."
+	@mkdir -p pull-vids_$(VERSION)_amd64/usr/local/bin
+	@mkdir -p pull-vids_$(VERSION)_amd64/DEBIAN
+	@cp dist/$(BINARY_NAME)-linux-amd64 pull-vids_$(VERSION)_amd64/usr/local/bin/$(BINARY_NAME)
+	@cp packaging/deb/DEBIAN/* pull-vids_$(VERSION)_amd64/DEBIAN/
+	@chmod 755 pull-vids_$(VERSION)_amd64/usr/local/bin/$(BINARY_NAME)
+	@chmod +x pull-vids_$(VERSION)_amd64/DEBIAN/postinst
+	@dpkg-deb --build pull-vids_$(VERSION)_amd64
+	@mkdir -p dist/packages
+	@mv pull-vids_$(VERSION)_amd64.deb dist/packages/
+	@rm -rf pull-vids_$(VERSION)_amd64
+	@echo "✓ Created dist/packages/pull-vids_$(VERSION)_amd64.deb"
+
+checksums: release ## Generate SHA256 checksums for releases
+	@echo "Generating checksums..."
+	@cd dist/releases && shasum -a 256 * > SHA256SUMS
+	@echo "✓ Checksums saved to dist/releases/SHA256SUMS"
+	@cat dist/releases/SHA256SUMS
+
 .DEFAULT_GOAL := help

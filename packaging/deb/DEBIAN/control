@@ -1,0 +1,21 @@
+Package: pull-vids
+Version: 0.2.0
+Section: utils
+Priority: optional
+Architecture: amd64
+Depends: ffmpeg
+Suggests: python3-pip
+Maintainer: pull-vids contributors <https://github.com/vib795/pull-vids>
+Homepage: https://github.com/vib795/pull-vids
+Description: Free CLI tool for downloading YouTube videos and audio
+ A free, open-source CLI tool for downloading YouTube videos and audio.
+ Inspired by tools like Downie and PullTube, but completely free!
+ .
+ Features:
+  - Download YouTube videos in various qualities (360p to 4K)
+  - Download audio-only (MP3, M4A, etc.)
+  - Support for playlists
+  - Beautiful real-time progress bars
+  - Fast startup (< 1ms)
+ .
+ Note: Requires yt-dlp to be installed (pip install yt-dlp)
