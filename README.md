@@ -2,6 +2,8 @@
 
 A free, open-source CLI tool for downloading YouTube videos and audio. Inspired by tools like Downie and PullTube, but completely free!
 
+**Now available in both Go (blazingly fast!) and Python versions!**
+
 ## Features
 
 - Download YouTube videos in various qualities (360p to 4K)
@@ -10,53 +12,88 @@ A free, open-source CLI tool for downloading YouTube videos and audio. Inspired 
 - Beautiful progress indicators
 - Cross-platform (Windows, macOS, Linux)
 - No ads, no paywalls, just downloads
+- **Go version**: Single binary, super fast, minimal dependencies
+- **Python version**: Easy to modify, uv-based for fast package management
 
 ## Installation
 
-### Requirements
+### Common Requirements
 
-- Python 3.8 or higher
 - ffmpeg (for audio conversion and video merging)
+- yt-dlp (for YouTube downloading)
 
-### Install ffmpeg
+### Install ffmpeg and yt-dlp
 
 **macOS:**
 ```bash
-brew install ffmpeg
+brew install ffmpeg yt-dlp
 ```
 
 **Ubuntu/Debian:**
 ```bash
 sudo apt update
 sudo apt install ffmpeg
+pip install yt-dlp
 ```
 
 **Windows:**
-Download from [ffmpeg.org](https://ffmpeg.org/download.html) or use:
 ```bash
 winget install ffmpeg
+pip install yt-dlp
 ```
 
-### Install pull-vids
+### Option 1: Go Version (Recommended - Fastest!)
 
 ```bash
 # Clone the repository
 git clone https://github.com/vib795/pull-vids.git
 cd pull-vids
 
-# Install dependencies
-pip install -r requirements.txt
+# Build the binary
+go build -o pull-vids main.go
 
-# Install the package
-pip install -e .
+# Optional: Install to system
+sudo mv pull-vids /usr/local/bin/
+# Or on Windows, add to PATH
+```
+
+**Pre-built binaries** (coming soon):
+- Download from [Releases](https://github.com/vib795/pull-vids/releases)
+- No build required, just download and run!
+
+### Option 2: Python Version (with uv)
+
+```bash
+# Install uv if you haven't already
+curl -LsSf https://astral.sh/uv/install.sh | sh
+# Or on Windows:
+# powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# Clone the repository
+git clone https://github.com/vib795/pull-vids.git
+cd pull-vids
+
+# Install with uv
+uv pip install -e .
+
+# Or just install dependencies
+uv pip install -r requirements.txt
 ```
 
 ## Usage
+
+The CLI works identically for both Go and Python versions!
 
 ### Basic Examples
 
 **Download a video (best quality):**
 ```bash
+# Go version (if installed to PATH)
+pull-vids "https://www.youtube.com/watch?v=VIDEO_ID"
+
+# Python version
+python -m pull_vids.cli "https://www.youtube.com/watch?v=VIDEO_ID"
+# Or if installed with uv pip install -e .
 pull-vids "https://www.youtube.com/watch?v=VIDEO_ID"
 ```
 
@@ -144,6 +181,8 @@ pull-vids -f mkv "https://www.youtube.com/watch?v=VIDEO_ID"
 - **Privacy Focused** - No tracking, no data collection
 - **Powerful** - Built on yt-dlp, the best YouTube downloading library
 - **Simple** - Clean CLI interface, no bloat
+- **Fast** - Go version compiles to a single binary with zero startup time
+- **Flexible** - Choose Go for speed or Python for easy customization
 
 ## Troubleshooting
 
@@ -171,8 +210,14 @@ MIT License - feel free to use this tool however you want!
 
 ## Credits
 
-Built with:
+**Core:**
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp) - The amazing YouTube downloading library
+
+**Go version:**
+- [fatih/color](https://github.com/fatih/color) - Colored terminal output
+- [schollz/progressbar](https://github.com/schollz/progressbar) - Beautiful progress bars
+
+**Python version:**
 - [colorama](https://github.com/tartley/colorama) - Cross-platform colored terminal output
 
 Inspired by Downie and PullTube, but free and open-source!

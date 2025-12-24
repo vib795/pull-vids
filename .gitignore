@@ -44,3 +44,10 @@ downloads/
 *.m4a
 *.webm
 *.mkv
+
+# Go
+pull-vids
+pull-vids.exe
+*.test
+*.out
+vendor/
