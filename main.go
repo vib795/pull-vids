@@ -242,6 +242,25 @@ func downloadVideo(config *Config) error {
 	return nil
 }
 
+func cleanURL(url string) string {
+	// Remove backslash escapes that shells add to special characters
+	// These are common when users don't quote URLs properly
+	replacements := []string{
+		`\?`, `?`,
+		`\=`, `=`,
+		`\&`, `&`,
+		`\:`, `:`,
+		`\/`, `/`,
+	}
+
+	cleaned := url
+	for i := 0; i < len(replacements); i += 2 {
+		cleaned = strings.ReplaceAll(cleaned, replacements[i], replacements[i+1])
+	}
+
+	return cleaned
+}
+
 func parseFlags() *Config {
 	config := &Config{}
 
@@ -301,7 +320,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	config.URL = args[0]
+	config.URL = cleanURL(args[0])
 
 	// Validate URL
 	if !strings.Contains(config.URL, "youtube.com") && !strings.Contains(config.URL, "youtu.be") {
