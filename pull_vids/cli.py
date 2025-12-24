@@ -14,7 +14,7 @@ from colorama import init, Fore, Style
 # Initialize colorama for cross-platform colored output
 init(autoreset=True)
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 
 def print_banner():
@@ -23,9 +23,35 @@ def print_banner():
 {Fore.CYAN}╔═══════════════════════════════════════╗
 ║          pull-vids v{__version__}           ║
 ║   Free YouTube Video Downloader CLI   ║
+║        Built with Python + uv 🐍       ║
 ╚═══════════════════════════════════════╝{Style.RESET_ALL}
 """
     print(banner)
+
+
+def clean_url(url):
+    """
+    Clean URL by removing shell escape characters.
+
+    Args:
+        url: URL string that may contain backslash escapes
+
+    Returns:
+        Cleaned URL string
+    """
+    replacements = {
+        r'\?': '?',
+        r'\=': '=',
+        r'\&': '&',
+        r'\:': ':',
+        r'\/': '/',
+    }
+
+    cleaned = url
+    for escaped, unescaped in replacements.items():
+        cleaned = cleaned.replace(escaped, unescaped)
+
+    return cleaned
 
 
 def get_format_string(quality, audio_only=False):
@@ -59,16 +85,36 @@ def get_format_string(quality, audio_only=False):
 
 
 def progress_hook(d):
-    """Hook to display download progress."""
+    """Hook to display download progress with enhanced formatting."""
     if d['status'] == 'downloading':
         try:
-            percent = d.get('_percent_str', 'N/A')
-            speed = d.get('_speed_str', 'N/A')
-            eta = d.get('_eta_str', 'N/A')
+            # Get progress data
+            percent_str = d.get('_percent_str', 'N/A').strip()
+            speed = d.get('_speed_str', 'N/A').strip()
+            eta = d.get('_eta_str', 'N/A').strip()
+            downloaded = d.get('_downloaded_bytes_str', 'N/A').strip()
+            total = d.get('_total_bytes_str', 'N/A').strip()
 
-            # Clear line and print progress
-            print(f'\r{Fore.GREEN}Downloading: {percent} | Speed: {speed} | ETA: {eta}{Style.RESET_ALL}', end='', flush=True)
-        except:
+            # Parse percentage for progress bar
+            try:
+                percent_num = float(percent_str.rstrip('%'))
+                bar_length = 50
+                filled = int(bar_length * percent_num / 100)
+                bar = '█' * filled + ' ' * (bar_length - filled)
+
+                # Create enhanced progress display
+                progress_line = (
+                    f'\r{Fore.GREEN}Downloading{Style.RESET_ALL} '
+                    f'({Fore.CYAN}Speed: {speed}{Style.RESET_ALL}, '
+                    f'{Fore.YELLOW}ETA: {eta}{Style.RESET_ALL}) '
+                    f'[{Fore.GREEN}{bar}{Style.RESET_ALL}] '
+                    f'{percent_str}'
+                )
+                print(progress_line, end='', flush=True)
+            except (ValueError, TypeError):
+                # Fallback to simple progress
+                print(f'\r{Fore.GREEN}Downloading: {percent_str} | Speed: {speed} | ETA: {eta}{Style.RESET_ALL}', end='', flush=True)
+        except Exception:
             pass
     elif d['status'] == 'finished':
         print(f'\n{Fore.GREEN}✓ Download complete! Processing...{Style.RESET_ALL}')
@@ -239,14 +285,16 @@ Examples:
     if not args.no_banner:
         print_banner()
 
-    # Validate URL
-    if not args.url or not ('youtube.com' in args.url or 'youtu.be' in args.url):
+    # Clean and validate URL
+    clean_url_str = clean_url(args.url)
+
+    if not clean_url_str or not ('youtube.com' in clean_url_str or 'youtu.be' in clean_url_str):
         print(f"{Fore.RED}✗ Invalid YouTube URL{Style.RESET_ALL}", file=sys.stderr)
         return 1
 
     # Download the video
     success = download_video(
-        url=args.url,
+        url=clean_url_str,
         output_dir=args.output,
         quality=args.quality,
         audio_only=args.audio_only,
