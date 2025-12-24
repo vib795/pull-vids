@@ -180,34 +180,76 @@ func downloadVideo(config *Config) error {
 		return err
 	}
 
-	// Create progress bar
-	bar := progressbar.NewOptions(-1,
-		progressbar.OptionSetDescription(green.Sprint("Downloading...")),
+	// Create progress bar (100% scale)
+	bar := progressbar.NewOptions(100,
+		progressbar.OptionSetDescription(green.Sprint("Downloading")),
 		progressbar.OptionSetWidth(50),
-		progressbar.OptionShowBytes(true),
 		progressbar.OptionShowCount(),
 		progressbar.OptionEnableColorCodes(true),
 		progressbar.OptionSetTheme(progressbar.Theme{
-			Saucer:        green.Sprint("="),
-			SaucerHead:    green.Sprint(">"),
+			Saucer:        green.Sprint("█"),
+			SaucerHead:    green.Sprint("█"),
 			SaucerPadding: " ",
 			BarStart:      "[",
 			BarEnd:        "]",
 		}),
+		progressbar.OptionShowIts(),
+		progressbar.OptionSetItsString("%"),
 	)
+
+	var currentPercent int
 
 	// Read output
 	go func() {
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
 			line := scanner.Text()
+
 			if strings.Contains(line, "[download]") {
-				if strings.Contains(line, "ETA") {
-					bar.Add(1)
+				// Parse percentage from yt-dlp output
+				// Format: "[download]  45.3% of 12.34MiB at 1.23MiB/s ETA 00:10"
+				if strings.Contains(line, "%") && strings.Contains(line, "of") {
+					parts := strings.Fields(line)
+					for i, part := range parts {
+						if strings.HasSuffix(part, "%") {
+							percentStr := strings.TrimSuffix(part, "%")
+							var percent float64
+							if _, err := fmt.Sscanf(percentStr, "%f", &percent); err == nil {
+								newPercent := int(percent)
+								if newPercent > currentPercent {
+									bar.Set(newPercent)
+									currentPercent = newPercent
+								}
+
+								// Extract and show speed/ETA info
+								var speed, eta string
+								for j := i + 1; j < len(parts); j++ {
+									if parts[j] == "at" && j+1 < len(parts) {
+										speed = parts[j+1]
+									}
+									if parts[j] == "ETA" && j+1 < len(parts) {
+										eta = parts[j+1]
+									}
+								}
+
+								if speed != "" && eta != "" {
+									desc := fmt.Sprintf("%s (Speed: %s, ETA: %s)",
+										green.Sprint("Downloading"),
+										cyan.Sprint(speed),
+										yellow.Sprint(eta))
+									bar.Describe(desc)
+								}
+							}
+							break
+						}
+					}
 				} else if strings.Contains(line, "has already been downloaded") {
-					yellow.Println("Already downloaded, skipping...")
-				} else if strings.Contains(line, "Downloading") {
-					fmt.Println(line)
+					yellow.Println("\n✓ Already downloaded, skipping...")
+					bar.Set(100)
+				} else if strings.Contains(line, "Destination") {
+					// New file starting
+					currentPercent = 0
+					bar.Reset()
 				}
 			}
 		}
@@ -219,6 +261,7 @@ func downloadVideo(config *Config) error {
 		for scanner.Scan() {
 			line := scanner.Text()
 			if strings.Contains(line, "ERROR") {
+				fmt.Println() // New line before error
 				red.Println(line)
 			}
 		}
@@ -231,6 +274,8 @@ func downloadVideo(config *Config) error {
 		return fmt.Errorf("download failed: %w", err)
 	}
 
+	// Ensure bar shows 100%
+	bar.Set(100)
 	bar.Finish()
 	fmt.Println()
 
