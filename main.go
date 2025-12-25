@@ -45,8 +45,8 @@ type VideoInfo struct {
 func printBanner() {
 	cyan.Println("╔═══════════════════════════════════════╗")
 	cyan.Printf("║          pull-vids v%-8s       ║\n", version)
-	cyan.Println("║   Free YouTube Video Downloader CLI   ║")
-	cyan.Println("║         Built with Go - Fast! 🚀      ║")
+	cyan.Println("║  Universal Video Downloader CLI 🌐    ║")
+	cyan.Println("║   YouTube • Vimeo • Twitter • More    ║")
 	cyan.Println("╚═══════════════════════════════════════╝")
 	fmt.Println()
 }
@@ -326,17 +326,22 @@ func parseFlags() *Config {
 	flag.Usage = func() {
 		printBanner()
 		fmt.Fprintf(os.Stderr, "Usage: pull-vids [options] <URL>\n\n")
+		fmt.Fprintf(os.Stderr, "Supports 1000+ sites: YouTube, Vimeo, Twitter, TikTok, Instagram, and more!\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		flag.PrintDefaults()
 		fmt.Fprintf(os.Stderr, "\nExamples:\n")
-		fmt.Fprintf(os.Stderr, "  # Download video in best quality\n")
+		fmt.Fprintf(os.Stderr, "  # Download YouTube video in best quality\n")
 		fmt.Fprintf(os.Stderr, "  pull-vids \"https://www.youtube.com/watch?v=VIDEO_ID\"\n\n")
+		fmt.Fprintf(os.Stderr, "  # Download from Vimeo\n")
+		fmt.Fprintf(os.Stderr, "  pull-vids \"https://vimeo.com/123456789\"\n\n")
+		fmt.Fprintf(os.Stderr, "  # Download Twitter/X video\n")
+		fmt.Fprintf(os.Stderr, "  pull-vids \"https://twitter.com/user/status/123456\"\n\n")
+		fmt.Fprintf(os.Stderr, "  # Download TikTok video\n")
+		fmt.Fprintf(os.Stderr, "  pull-vids \"https://www.tiktok.com/@user/video/123456\"\n\n")
 		fmt.Fprintf(os.Stderr, "  # Download audio only as MP3\n")
 		fmt.Fprintf(os.Stderr, "  pull-vids -a \"https://www.youtube.com/watch?v=VIDEO_ID\"\n\n")
 		fmt.Fprintf(os.Stderr, "  # Download in 720p quality to specific directory\n")
-		fmt.Fprintf(os.Stderr, "  pull-vids -q 720p -o ~/Videos \"https://www.youtube.com/watch?v=VIDEO_ID\"\n\n")
-		fmt.Fprintf(os.Stderr, "  # Download entire playlist\n")
-		fmt.Fprintf(os.Stderr, "  pull-vids -p \"https://www.youtube.com/playlist?list=PLAYLIST_ID\"\n\n")
+		fmt.Fprintf(os.Stderr, "  pull-vids -q 720p -o ~/Videos \"https://vimeo.com/123456\"\n\n")
 	}
 
 	flag.Parse()
@@ -360,16 +365,16 @@ func main() {
 	// Get URL from remaining args
 	args := flag.Args()
 	if len(args) == 0 {
-		red.Println("✗ Error: YouTube URL required")
+		red.Println("✗ Error: Video URL required")
 		fmt.Println("\nRun 'pull-vids -h' for usage information")
 		os.Exit(1)
 	}
 
 	config.URL = cleanURL(args[0])
 
-	// Validate URL
-	if !strings.Contains(config.URL, "youtube.com") && !strings.Contains(config.URL, "youtu.be") {
-		red.Println("✗ Error: Invalid YouTube URL")
+	// Basic URL validation
+	if !strings.HasPrefix(config.URL, "http://") && !strings.HasPrefix(config.URL, "https://") {
+		red.Println("✗ Error: Invalid URL (must start with http:// or https://)")
 		os.Exit(1)
 	}
 

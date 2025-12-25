@@ -1,14 +1,29 @@
 # pull-vids
 
-A free, open-source CLI tool for downloading YouTube videos and audio. Inspired by tools like Downie and PullTube, but completely free!
+A free, open-source CLI tool for downloading videos and audio from **1000+ websites**. Inspired by tools like Downie and PullTube, but completely free!
 
 **Built with Go for blazingly fast performance! 🚀**
 
+## Supported Platforms
+
+Works with any site supported by yt-dlp, including:
+- **YouTube** - Videos, playlists, channels
+- **Vimeo** - Videos and channels
+- **Twitter/X** - Videos and GIFs
+- **TikTok** - Videos
+- **Instagram** - Videos, Reels, Stories
+- **Facebook** - Videos
+- **Twitch** - VODs and clips
+- **Reddit** - Videos from v.redd.it
+- **Dailymotion** - Videos
+- **And 1000+ more!** - [Full list](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md)
+
 ## Features
 
-- Download YouTube videos in various qualities (360p to 4K)
-- Download audio-only (MP3, M4A, etc.)
-- Support for playlists
+- Download videos from 1000+ websites
+- Various quality options (360p to 4K)
+- Audio-only extraction (MP3, M4A, etc.)
+- Playlist and channel support
 - Beautiful real-time progress bars
 - Cross-platform (Windows, macOS, Linux)
 - Single binary - no dependencies to install
@@ -157,9 +172,34 @@ pull-vids --version
 
 ### Basic Examples
 
-**Download a video (best quality):**
+**Download from YouTube:**
 ```bash
 pull-vids "https://www.youtube.com/watch?v=VIDEO_ID"
+```
+
+**Download from Vimeo:**
+```bash
+pull-vids "https://vimeo.com/123456789"
+```
+
+**Download from Twitter/X:**
+```bash
+pull-vids "https://twitter.com/user/status/123456"
+```
+
+**Download from TikTok:**
+```bash
+pull-vids "https://www.tiktok.com/@user/video/123456"
+```
+
+**Download from Instagram:**
+```bash
+pull-vids "https://www.instagram.com/p/ABC123/"
+```
+
+**Download from Twitch:**
+```bash
+pull-vids "https://www.twitch.tv/videos/123456789"
 ```
 
 **Download audio only:**
@@ -169,7 +209,7 @@ pull-vids -a "https://www.youtube.com/watch?v=VIDEO_ID"
 
 **Download in specific quality:**
 ```bash
-pull-vids -q 720p "https://www.youtube.com/watch?v=VIDEO_ID"
+pull-vids -q 720p "https://vimeo.com/123456789"
 ```
 
 **Download to a specific directory:**
@@ -180,11 +220,6 @@ pull-vids -o ~/Videos "https://www.youtube.com/watch?v=VIDEO_ID"
 **Download entire playlist:**
 ```bash
 pull-vids -p "https://www.youtube.com/playlist?list=PLAYLIST_ID"
-```
-
-**Download playlist as audio:**
-```bash
-pull-vids -a -p "https://www.youtube.com/playlist?list=PLAYLIST_ID"
 ```
 
 ### Command-Line Options
