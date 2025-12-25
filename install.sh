@@ -138,7 +138,7 @@ echo -e "${YELLOW}Run '${BINARY_NAME} --help' to get started!${NC}"
 echo ""
 echo -e "${CYAN}Note: You also need to install:${NC}"
 echo -e "  - ffmpeg (for video processing)"
-echo -e "  - yt-dlp (for YouTube downloads)"
+echo -e "  - yt-dlp (for downloading from 1000+ sites)"
 echo ""
 echo -e "${CYAN}Install dependencies:${NC}"
 if [ "$PLATFORM" = "darwin" ]; then
