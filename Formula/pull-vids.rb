@@ -1,6 +1,6 @@
 # Homebrew Formula for pull-vids
 class PullVids < Formula
-  desc "Free CLI tool for downloading YouTube videos and audio"
+  desc "Universal video downloader CLI supporting 1000+ websites"
   homepage "https://github.com/vib795/pull-vids"
   version "0.2.0"
   license "MIT"
