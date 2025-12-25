@@ -228,7 +228,7 @@ pull-vids -p "https://www.youtube.com/playlist?list=PLAYLIST_ID"
 usage: pull-vids [-h] [-o OUTPUT] [-q QUALITY] [-a] [-p] [-f FORMAT] [-v] [--no-banner] url
 
 positional arguments:
-  url                   YouTube video or playlist URL
+  url                   Video URL from any supported site (1000+ platforms)
 
 options:
   -h, --help            show this help message and exit
@@ -279,7 +279,7 @@ pull-vids -f mkv "https://www.youtube.com/watch?v=VIDEO_ID"
 - **Free Forever** - No subscriptions, no trials, no limitations
 - **Open Source** - Transparent code you can trust and modify
 - **Privacy Focused** - No tracking, no data collection
-- **Powerful** - Built on yt-dlp, the best YouTube downloading library
+- **Powerful** - Built on yt-dlp, supporting 1000+ video platforms
 - **Simple** - Clean CLI interface, no bloat
 - **Fast** - Compiles to a single binary with zero startup time
 - **Portable** - Single executable, no runtime dependencies
@@ -296,9 +296,10 @@ pull-vids -f mkv "https://www.youtube.com/watch?v=VIDEO_ID"
 - Check if the URL is correct
 
 **Slow downloads:**
-- YouTube may be throttling your connection
+- The video platform may be throttling your connection
 - Try downloading at a different time
 - Use a different quality setting
+- Some platforms have rate limits
 
 ## Contributing
 
@@ -321,4 +322,4 @@ Inspired by Downie and PullTube, but free and open-source!
 
 ## Disclaimer
 
-This tool is for personal use only. Please respect copyright laws and YouTube's Terms of Service. Only download videos you have the right to download.
+This tool is for personal use only. Please respect copyright laws and each platform's Terms of Service. Only download videos you have the right to download.

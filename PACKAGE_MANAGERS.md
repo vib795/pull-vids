@@ -135,7 +135,7 @@ Create a bucket repository:
 ```json
 {
     "version": "0.2.0",
-    "description": "Free CLI tool for downloading YouTube videos and audio",
+    "description": "Universal video downloader CLI supporting 1000+ websites",
     "homepage": "https://github.com/vib795/pull-vids",
     "license": "MIT",
     "url": "https://github.com/vib795/pull-vids/releases/download/v0.2.0/pull-vids-windows-amd64.zip",
@@ -165,10 +165,12 @@ Create `snap/snapcraft.yaml`:
 ```yaml
 name: pull-vids
 version: '0.2.0'
-summary: Free CLI tool for downloading YouTube videos and audio
+summary: Universal video downloader CLI supporting 1000+ websites
 description: |
-  A free, open-source CLI tool for downloading YouTube videos and audio.
+  A free, open-source CLI tool for downloading videos and audio from 1000+ websites.
   Inspired by tools like Downie and PullTube, but completely free!
+  .
+  Supports YouTube, Vimeo, Twitter, TikTok, Instagram, Facebook, Twitch, Reddit, and more!
 
 base: core20
 confinement: strict
@@ -207,7 +209,7 @@ Create `PKGBUILD`:
 pkgname=pull-vids
 pkgver=0.2.0
 pkgrel=1
-pkgdesc="Free CLI tool for downloading YouTube videos and audio"
+pkgdesc="Universal video downloader CLI supporting 1000+ websites"
 arch=('x86_64' 'aarch64')
 url="https://github.com/vib795/pull-vids"
 license=('MIT')
@@ -252,7 +254,7 @@ buildGoModule rec {
   propagatedBuildInputs = [ ffmpeg yt-dlp ];
 
   meta = with lib; {
-    description = "Free CLI tool for downloading YouTube videos and audio";
+    description = "Universal video downloader CLI supporting 1000+ websites";
     homepage = "https://github.com/vib795/pull-vids";
     license = licenses.mit;
     maintainers = with maintainers; [ ];

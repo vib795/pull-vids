@@ -71,7 +71,7 @@ import (
 #### **2. Configuration Struct**
 ```go
 type Config struct {
-    URL        string  // YouTube URL to download
+    URL        string  // Video URL to download (supports 1000+ sites)
     Output     string  // Where to save files
     Quality    string  // Video quality (720p, 1080p, etc.)
     AudioOnly  bool    // Download only audio?
@@ -231,8 +231,8 @@ pull-vids -q 720p "https://youtube.com/watch?v=ABC"
 
 3. **Validation**
    ```go
-   if !strings.Contains(url, "youtube.com") {
-       return errors.New("Invalid YouTube URL")
+   if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
+       return errors.New("Invalid URL")
    }
    ```
 
@@ -402,7 +402,7 @@ brew install pull-vids
 
 ```ruby
 class PullVids < Formula
-  desc "Free CLI tool for downloading YouTube videos"
+  desc "Universal video downloader CLI supporting 1000+ websites"
   homepage "https://github.com/vib795/pull-vids"
   version "0.2.0"
   license "MIT"
@@ -565,7 +565,7 @@ Package: pull-vids
 Version: 0.2.0
 Architecture: amd64
 Depends: ffmpeg          # APT will install ffmpeg first
-Description: Free CLI tool for downloading YouTube videos
+Description: Universal video downloader CLI supporting 1000+ websites
 ```
 
 #### **Publishing to Ubuntu PPA**
@@ -748,8 +748,8 @@ GOOS=windows GOARCH=amd64 go build -o pull-vids.exe
 
 ## Common Questions
 
-**Q: Why use yt-dlp instead of implementing YouTube downloading ourselves?**
-A: YouTube's API and download mechanisms are complex and constantly changing. yt-dlp is maintained by a large community and handles all edge cases.
+**Q: Why use yt-dlp instead of implementing video downloading ourselves?**
+A: Each website (YouTube, Vimeo, TikTok, etc.) has different APIs and download mechanisms that constantly change. yt-dlp is maintained by a large community and supports 1000+ sites, handling all edge cases and updates.
 
 **Q: Why Go instead of Python/Node.js?**
 A:

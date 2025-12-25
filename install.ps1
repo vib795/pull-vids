@@ -80,7 +80,7 @@ Write-Host "(You may need to restart your terminal)" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "Note: You also need to install:" -ForegroundColor Cyan
 Write-Host "  - ffmpeg (for video processing)" -ForegroundColor White
-Write-Host "  - yt-dlp (for YouTube downloads)" -ForegroundColor White
+Write-Host "  - yt-dlp (for downloading from 1000+ sites)" -ForegroundColor White
 Write-Host ""
 Write-Host "Install dependencies:" -ForegroundColor Cyan
 Write-Host "  winget install ffmpeg" -ForegroundColor Yellow
