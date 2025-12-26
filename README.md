@@ -36,7 +36,7 @@ Works with any site supported by yt-dlp, including:
 
 **macOS (Homebrew):**
 ```bash
-brew tap vib795/pull-vids
+brew tap vib795/tap
 brew install pull-vids
 ```
 

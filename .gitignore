@@ -25,3 +25,6 @@ pull-vids.exe
 vendor/
 dist/
 
+homebrew-tap/
+homebrew-tap/Formula
+homebrew-tap/Formula/pull-vids.rb
