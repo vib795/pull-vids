@@ -31,7 +31,7 @@ Sleep 1s
 
 # Demo 1: Download video
 Type "# Download a YouTube video" Sleep 500ms Enter
-Type "pull-vids 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'" Sleep 500ms Enter
+Type "pull-vids 'https://www.youtube.com/watch?v=K14hxdekrzE'" Sleep 500ms Enter
 Sleep 6s
 Ctrl+C
 Sleep 1s
@@ -39,7 +39,7 @@ Sleep 1s
 # Demo 2: Audio only
 Type "clear" Sleep 500ms Enter
 Type "# Extract audio only (MP3)" Sleep 500ms Enter
-Type "pull-vids --audio 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'" Sleep 500ms Enter
+Type "pull-vids --audio 'https://www.youtube.com/watch?v=K14hxdekrzE'" Sleep 500ms Enter
 Sleep 6s
 Ctrl+C
 Sleep 1s
@@ -47,7 +47,7 @@ Sleep 1s
 # Demo 3: Specific quality
 Type "clear" Sleep 500ms Enter
 Type "# Download in 720p" Sleep 500ms Enter
-Type "pull-vids --quality 720p 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'" Sleep 500ms Enter
+Type "pull-vids --quality 720p 'https://www.youtube.com/watch?v=K14hxdekrzE'" Sleep 500ms Enter
 Sleep 6s
 Ctrl+C
 Sleep 1s

@@ -47,7 +47,7 @@ run_demo "pull-vids --help"
 # Demo 3: Download from YouTube (example)
 print_header "3. Download YouTube Video"
 echo "Example command:"
-echo -e "${YELLOW}$ pull-vids 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'${NC}"
+echo -e "${YELLOW}$ pull-vids 'https://www.youtube.com/watch?v=K14hxdekrzE'${NC}"
 echo ""
 echo "This will download the video in best available quality"
 sleep 3
@@ -55,7 +55,7 @@ sleep 3
 # Demo 4: Audio extraction
 print_header "4. Extract Audio Only"
 echo "Example command:"
-echo -e "${YELLOW}$ pull-vids --audio 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'${NC}"
+echo -e "${YELLOW}$ pull-vids --audio 'https://www.youtube.com/watch?v=K14hxdekrzE'${NC}"
 echo ""
 echo "Downloads audio as MP3"
 sleep 3
@@ -63,7 +63,7 @@ sleep 3
 # Demo 5: Specific quality
 print_header "5. Choose Specific Quality"
 echo "Example command:"
-echo -e "${YELLOW}$ pull-vids --quality 720p 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'${NC}"
+echo -e "${YELLOW}$ pull-vids --quality 720p 'https://www.youtube.com/watch?v=K14hxdekrzE'${NC}"
 echo ""
 echo "Available qualities: best, high, medium, low, 2160p, 1440p, 1080p, 720p, 480p, 360p"
 sleep 3
@@ -71,31 +71,31 @@ sleep 3
 # Demo 6: Custom output directory
 print_header "6. Custom Output Directory"
 echo "Example command:"
-echo -e "${YELLOW}$ pull-vids --output ~/Videos 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'${NC}"
+echo -e "${YELLOW}$ pull-vids --output ~/Videos 'https://www.youtube.com/watch?v=K14hxdekrzE'${NC}"
 echo ""
 echo "Save to a specific folder"
 sleep 3
 
-# Demo 7: Playlist download
-print_header "7. Download Entire Playlist"
-echo "Example command:"
-echo -e "${YELLOW}$ pull-vids --playlist 'https://www.youtube.com/playlist?list=PLAYLIST_ID'${NC}"
-echo ""
-echo "Downloads all videos in the playlist"
-sleep 3
+# # Demo 7: Playlist download
+# print_header "7. Download Entire Playlist"
+# echo "Example command:"
+# echo -e "${YELLOW}$ pull-vids --playlist 'https://www.youtube.com/playlist?list=PLAYLIST_ID'${NC}"
+# echo ""
+# echo "Downloads all videos in the playlist"
+# sleep 3
 
-# Demo 8: Supported platforms
-print_header "8. Supported Platforms (1000+)"
-echo "✅ YouTube      - Videos, playlists, channels"
-echo "✅ Vimeo        - Videos and channels"
-echo "✅ Twitter/X    - Videos and GIFs"
-echo "✅ TikTok       - Videos"
-echo "✅ Instagram    - Videos, Reels, Stories"
-echo "✅ Facebook     - Videos"
-echo "✅ Twitch       - VODs and clips"
-echo "✅ Reddit       - v.redd.it videos"
-echo "✅ And 1000+ more!"
-sleep 4
+# # Demo 8: Supported platforms
+# print_header "8. Supported Platforms (1000+)"
+# echo "✅ YouTube      - Videos, playlists, channels"
+# echo "✅ Vimeo        - Videos and channels"
+# echo "✅ Twitter/X    - Videos and GIFs"
+# echo "✅ TikTok       - Videos"
+# echo "✅ Instagram    - Videos, Reels, Stories"
+# echo "✅ Facebook     - Videos"
+# echo "✅ Twitch       - VODs and clips"
+# echo "✅ Reddit       - v.redd.it videos"
+# echo "✅ And 1000+ more!"
+# sleep 4
 
 # Installation reminder
 print_header "Installation"

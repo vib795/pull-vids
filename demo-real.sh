@@ -45,17 +45,17 @@ demo_pause
 
 # 3. Example commands (shown but not executed)
 echo "# Example: Download YouTube video"
-echo "$ pull-vids 'https://www.youtube.com/watch?v=VIDEO_ID'"
+echo "$ pull-vids 'https://www.youtube.com/watch?v=K14hxdekrzE'"
 echo ""
 demo_pause
 
 echo "# Example: Extract audio as MP3"
-echo "$ pull-vids --audio 'https://www.youtube.com/watch?v=VIDEO_ID'"
+echo "$ pull-vids --audio 'https://www.youtube.com/watch?v=K14hxdekrzE'"
 echo ""
 demo_pause
 
 echo "# Example: Download in 1080p"
-echo "$ pull-vids --quality 1080p 'https://www.youtube.com/watch?v=VIDEO_ID'"
+echo "$ pull-vids --quality 1080p 'https://www.youtube.com/watch?v=K14hxdekrzE'"
 echo ""
 demo_pause
 

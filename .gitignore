@@ -28,3 +28,9 @@ dist/
 homebrew-tap/
 homebrew-tap/Formula
 homebrew-tap/Formula/pull-vids.rb
+demo-real.sh
+demo-script.sh
+demo.tape
+PACKAGE_MANAGERS.md
+HOMEBREW_CHECKLIST.md
+ARCHITECTURE.md
