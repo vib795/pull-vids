@@ -4,6 +4,21 @@ A free, open-source CLI tool for downloading videos and audio from **1000+ websi
 
 **Built with Go for blazingly fast performance! 🚀**
 
+## 🌐 Try the Web Version!
+
+**Don't want to use the command line?** Try our web version:
+
+👉 **[pull-vids Web App](https://pull-vids.vercel.app)** (coming soon!)
+
+- ✨ No installation needed
+- 🖱️ Just paste a URL and click download
+- 📱 Works on any device
+- 🆓 Completely free
+
+*Note: Web version currently supports YouTube only. For 1000+ platforms, use the CLI below.*
+
+---
+
 ## Supported Platforms
 
 Works with any site supported by yt-dlp, including:
