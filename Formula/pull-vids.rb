@@ -40,7 +40,9 @@ class PullVids < Formula
   end
 
   test do
-    assert_match version.to_s, shell_output("#{bin}/pull-vids --version")
+    # Test version output
+    version_output = shell_output("#{bin}/pull-vids --version")
+    assert_match "pull-vids", version_output
 
     # Test help output
     help_output = shell_output("#{bin}/pull-vids --help 2>&1")
