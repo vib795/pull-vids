@@ -3,6 +3,9 @@ class PullVids < Formula
   homepage "https://github.com/vib795/pull-vids"
   license "MIT"
 
+  depends_on "ffmpeg"
+  depends_on "yt-dlp"
+
   on_macos do
     on_arm do
       url "https://github.com/vib795/pull-vids/releases/download/v0.2.0/pull-vids-darwin-arm64.tar.gz"
@@ -24,9 +27,6 @@ class PullVids < Formula
       sha256 "aed88f543f74c4f9459a8f8d61857eaf520c0e100c8e1e8d9e37577478ae9e1b"
     end
   end
-
-  depends_on "ffmpeg"
-  depends_on "yt-dlp"
 
   def install
     # Determine the correct binary name based on platform and architecture
