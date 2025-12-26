@@ -6,22 +6,22 @@ class PullVids < Formula
   on_macos do
     on_arm do
       url "https://github.com/vib795/pull-vids/releases/download/v0.2.0/pull-vids-darwin-arm64.tar.gz"
-      sha256 "a6d7c093bdd5cf387b5651f36dcdb92fec924f4ba6f2307383c0d15834bd5165"
+      sha256 "710d1e1d3cec52d8a63f217b158d9ce3b1dadf24f537e9eec61391ae95047c2d"
     end
     on_intel do
       url "https://github.com/vib795/pull-vids/releases/download/v0.2.0/pull-vids-darwin-amd64.tar.gz"
-      sha256 "596ac58187b127a549d51bf079c4404837b39550b0fd9a816f18d2bbf3eb6af5"
+      sha256 "840e34c090cd9faff70a2c7afd0607c0efc6e0eb7f1088e70955e7af40e7c17c"
     end
   end
 
   on_linux do
     on_arm do
       url "https://github.com/vib795/pull-vids/releases/download/v0.2.0/pull-vids-linux-arm64.tar.gz"
-      sha256 "f171eadb1884da3b4687a424c01fef56d2ea4394458319221b5c1d0e6e5bac23"
+      sha256 "72839942b54bee8c74b2691e78fae00a6fb704c5e44af4d80b8c04dff91dbac6"
     end
     on_intel do
       url "https://github.com/vib795/pull-vids/releases/download/v0.2.0/pull-vids-linux-amd64.tar.gz"
-      sha256 "2146527a437c5dc56ae37ef004a302000a1290eb2affa5611bc86a9b1ac92839"
+      sha256 "aed88f543f74c4f9459a8f8d61857eaf520c0e100c8e1e8d9e37577478ae9e1b"
     end
   end
 
