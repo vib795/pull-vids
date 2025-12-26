@@ -39,3 +39,13 @@ othermds/DEMO.md
 othermds/EXAMPLES.md
 othermds/HOMEBREW_CHECKLIST.md
 othermds/PACKAGE_MANAGERS.md
+Formula/pull-vids.rb
+packaging/chocolatey
+packaging/chocolatey/pull-vids.nuspec
+packaging/chocolatey/tools
+packaging/chocolatey/tools/chocolateyinstall.ps1
+packaging/chocolatey/tools/chocolateyuninstall.ps1
+packaging/deb
+packaging/deb/DEBIAN
+packaging/deb/DEBIAN/control
+packaging/deb/DEBIAN/postinst
