@@ -284,6 +284,41 @@ pull-vids -f mkv "https://www.youtube.com/watch?v=VIDEO_ID"
 - **Fast** - Compiles to a single binary with zero startup time
 - **Portable** - Single executable, no runtime dependencies
 
+## Limitations
+
+### DRM-Protected Content
+
+**This tool CANNOT download DRM-protected content.** This includes:
+
+- ❌ Amazon Prime Video
+- ❌ Netflix
+- ❌ Disney+
+- ❌ Hulu
+- ❌ HBO Max
+- ❌ Apple TV+
+- ❌ Other paid streaming services
+
+**Why?** These services use DRM (Digital Rights Management) protection. yt-dlp does not and will not support bypassing DRM due to legal restrictions and ethical reasons.
+
+### What You CAN Download
+
+✅ **User-uploaded content:**
+- YouTube (videos, playlists, channels, live streams)
+- Vimeo (public and password-protected videos)
+- Social media (Twitter, TikTok, Instagram, Facebook)
+- Twitch (VODs and clips)
+- Reddit (v.redd.it videos)
+- And 1000+ other sites with publicly accessible content
+
+✅ **Public platforms** where content creators share their work
+✅ **Content you have legal rights to download**
+
+**Note:** Just because you can download something doesn't mean you should. Always respect:
+- Copyright laws
+- Platform Terms of Service
+- Content creator rights
+- Fair use guidelines
+
 ## Troubleshooting
 
 **"ffmpeg not found" error:**
