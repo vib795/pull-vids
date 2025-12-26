@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import VideoDownloader from '@/components/VideoDownloader'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
@@ -18,10 +17,10 @@ export default function Home() {
             pull-vids
           </h1>
           <p className="text-2xl text-gray-700 dark:text-gray-300 mb-4">
-            Free Video Downloader
+            CLI Command Generator
           </p>
           <p className="text-xl text-gray-600 dark:text-gray-400 mb-8">
-            Download videos from 1000+ websites - completely free!
+            Get the command to download videos from 1000+ websites
           </p>
           <div className="flex justify-center gap-4 text-sm text-gray-600 dark:text-gray-400">
             <span>✓ YouTube</span>
