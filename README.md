@@ -1,7 +1,5 @@
 # pull-vids
 
-# pull-vids
-
 [![GitHub release](https://img.shields.io/github/v/release/vib795/pull-vids)](https://github.com/vib795/pull-vids/releases)
 [![Homebrew](https://img.shields.io/badge/homebrew-vib795%2Ftap-orange)](https://github.com/vib795/homebrew-tap)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
