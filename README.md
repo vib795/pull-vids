@@ -45,12 +45,6 @@ brew install pull-vids
 choco install pull-vids
 ```
 
-**Windows (Scoop):**
-```powershell
-scoop bucket add pull-vids https://github.com/vib795/scoop-pull-vids
-scoop install pull-vids
-```
-
 **Ubuntu/Debian (APT):**
 ```bash
 sudo add-apt-repository ppa:vib795/pull-vids
