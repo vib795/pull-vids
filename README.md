@@ -47,35 +47,78 @@ Works with any site supported by yt-dlp, including:
 
 ## Installation
 
-### Package Managers (Recommended)
+### ⭐ Recommended: Homebrew (macOS & Linux)
 
-**macOS (Homebrew):**
+The easiest way to install pull-vids is via Homebrew:
+
+**Step 1: Add the tap**
 ```bash
 brew tap vib795/tap
+```
+
+**Step 2: Install pull-vids**
+```bash
 brew install pull-vids
 ```
 
-**Windows (Chocolatey):**
+**Step 3: Verify installation**
+```bash
+pull-vids --version
+```
+
+**That's it! 🎉** You can now download videos from 1000+ websites.
+
+**Update pull-vids:**
+```bash
+brew update
+brew upgrade pull-vids
+```
+
+**Uninstall (if needed):**
+```bash
+brew uninstall pull-vids
+brew untap vib795/tap
+```
+
+---
+
+### Alternative Installation Methods
+
+<details>
+<summary><b>Windows (Chocolatey)</b></summary>
+
 ```powershell
 choco install pull-vids
 ```
+</details>
 
-**Ubuntu/Debian (APT):**
+<details>
+<summary><b>Ubuntu/Debian (APT)</b></summary>
+
 ```bash
 sudo add-apt-repository ppa:vib795/pull-vids
 sudo apt update
 sudo apt install pull-vids
 ```
+</details>
 
-**Arch Linux (AUR):**
+<details>
+<summary><b>Arch Linux (AUR)</b></summary>
+
 ```bash
 yay -S pull-vids
 ```
+</details>
 
-**Linux (Snap):**
+<details>
+<summary><b>Linux (Snap)</b></summary>
+
 ```bash
 sudo snap install pull-vids
 ```
+</details>
+
+---
 
 ### Quick Install Script
 
