@@ -2,9 +2,12 @@
 
 [![GitHub release](https://img.shields.io/github/v/release/vib795/pull-vids)](https://github.com/vib795/pull-vids/releases)
 [![Homebrew](https://img.shields.io/badge/homebrew-vib795%2Ftap-orange)](https://github.com/vib795/homebrew-tap)
+[![Homebrew Formulas](https://img.shields.io/badge/Homebrew_Formulas-3-green?logo=homebrew)](https://github.com/vib795/homebrew-tap)
+<!-- [![Homebrew Contributor](https://img.shields.io/badge/Homebrew-Contributor-FBB040?logo=homebrew&logoColor=white)](https://github.com/Homebrew/homebrew-core) -->
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/vib795/pull-vids)](https://go.dev/)
 [![GitHub stars](https://img.shields.io/github/stars/vib795/pull-vids?style=social)](https://github.com/vib795/pull-vids/stargazers)
+
 
 A free, open-source CLI tool for downloading videos and audio from **1000+ websites**...
 
