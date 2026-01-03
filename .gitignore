@@ -49,3 +49,4 @@ packaging/deb
 packaging/deb/DEBIAN
 packaging/deb/DEBIAN/control
 packaging/deb/DEBIAN/postinst
+web/
