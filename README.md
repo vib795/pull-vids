@@ -276,31 +276,53 @@ pull-vids -p "https://www.youtube.com/playlist?list=PLAYLIST_ID"
 
 ### YouTube Authentication (Cookie Support)
 
-**If you get a bot detection error from YouTube**, you'll need to authenticate using cookies from your browser:
+**If you get a bot detection error from YouTube**, you'll need to authenticate using cookies from your browser.
 
-**Use cookies from Chrome:**
-```bash
-pull-vids --cookies-from-browser chrome "https://www.youtube.com/watch?v=VIDEO_ID"
-```
+#### Option 1: Export Cookies Manually (Recommended - Most Reliable)
 
-**Use cookies from Safari:**
-```bash
-pull-vids --cookies-from-browser safari "https://www.youtube.com/watch?v=VIDEO_ID"
-```
+1. **Install a browser extension to export cookies:**
+   - **Chrome/Edge/Brave:** [Get cookies.txt LOCALLY](https://chrome.google.com/webstore/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc)
+   - **Firefox:** [cookies.txt](https://addons.mozilla.org/en-US/firefox/addon/cookies-txt/)
 
-**Use cookies from Firefox:**
+2. **Visit YouTube and make sure you're logged in**
+
+3. **Click the extension icon and export cookies** for `youtube.com`
+
+4. **Save the file** (e.g., `youtube-cookies.txt`)
+
+5. **Use with pull-vids:**
+   ```bash
+   pull-vids --cookies youtube-cookies.txt "https://www.youtube.com/watch?v=VIDEO_ID"
+   ```
+
+#### Option 2: Extract Cookies from Browser
+
+**Firefox (usually works without issues):**
 ```bash
 pull-vids --cookies-from-browser firefox "https://www.youtube.com/watch?v=VIDEO_ID"
 ```
 
-**Use cookies from a file:**
+**Chrome:**
 ```bash
-pull-vids --cookies cookies.txt "https://www.youtube.com/watch?v=VIDEO_ID"
+pull-vids --cookies-from-browser chrome "https://www.youtube.com/watch?v=VIDEO_ID"
 ```
 
-**Supported browsers:** `chrome`, `firefox`, `safari`, `edge`, `chromium`, `brave`, `opera`, `vivaldi`
+**Safari (macOS only):**
+```bash
+pull-vids --cookies-from-browser safari "https://www.youtube.com/watch?v=VIDEO_ID"
+```
 
-**Note:** Make sure you're logged into YouTube in the browser you're extracting cookies from.
+**⚠️ macOS Safari Users:** If you get a permission error, you need to grant Full Disk Access:
+1. Open **System Settings** → **Privacy & Security** → **Full Disk Access**
+2. Click the **+** button and add your terminal app (Terminal.app or iTerm2)
+3. Restart your terminal
+4. Try again
+
+**⚠️ Chrome/Chromium Users:** If Chrome doesn't work, try exporting cookies manually (Option 1) or use Firefox.
+
+**Supported browsers:** `firefox`, `chrome`, `safari`, `edge`, `chromium`, `brave`, `opera`, `vivaldi`
+
+**Important:** Make sure you're logged into YouTube in the browser before extracting cookies!
 
 ### Command-Line Options
 
