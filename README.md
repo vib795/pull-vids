@@ -2,15 +2,9 @@
 
 [![GitHub release](https://img.shields.io/github/v/release/vib795/pull-vids)](https://github.com/vib795/pull-vids/releases)
 [![Homebrew](https://img.shields.io/badge/homebrew-vib795%2Ftap-orange)](https://github.com/vib795/homebrew-tap)
-[![Homebrew Formulas](https://img.shields.io/badge/Homebrew_Formulas-3-green?logo=homebrew)](https://github.com/vib795/homebrew-tap)
-<!-- [![Homebrew Contributor](https://img.shields.io/badge/Homebrew-Contributor-FBB040?logo=homebrew&logoColor=white)](https://github.com/Homebrew/homebrew-core) -->
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/vib795/pull-vids)](https://go.dev/)
 [![GitHub stars](https://img.shields.io/github/stars/vib795/pull-vids?style=social)](https://github.com/vib795/pull-vids/stargazers)
-
-
-A free, open-source CLI tool for downloading videos and audio from **1000+ websites**...
-
 
 A free, open-source CLI tool for downloading videos and audio from **1000+ websites**. Inspired by tools like Downie and PullTube, but completely free!
 
@@ -33,6 +27,7 @@ Works with any site supported by yt-dlp, including:
 ## Features
 
 - Download videos from 1000+ websites
+- **Cookie authentication** for YouTube bot detection bypass
 - Various quality options (360p to 4K)
 - Audio-only extraction (MP3, M4A, etc.)
 - Playlist and channel support
@@ -232,10 +227,62 @@ pull-vids -o ~/Videos "https://www.youtube.com/watch?v=VIDEO_ID"
 pull-vids -p "https://www.youtube.com/playlist?list=PLAYLIST_ID"
 ```
 
+### YouTube Authentication (Cookie Support)
+
+**If you get a bot detection error from YouTube**, you'll need to authenticate using cookies from your browser.
+
+#### Option 1: Export Cookies Manually (Recommended - Most Reliable)
+
+1. **Install a browser extension to export cookies:**
+   - **Chrome/Edge/Brave:** [Get cookies.txt LOCALLY](https://chrome.google.com/webstore/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc)
+   - **Firefox:** [cookies.txt](https://addons.mozilla.org/en-US/firefox/addon/cookies-txt/)
+
+2. **Visit YouTube and make sure you're logged in**
+
+3. **Click the extension icon and export cookies** for `youtube.com`
+
+4. **Save the file** (e.g., `youtube-cookies.txt`)
+
+5. **Use with pull-vids:**
+   ```bash
+   pull-vids --cookies youtube-cookies.txt "https://www.youtube.com/watch?v=VIDEO_ID"
+   ```
+
+#### Option 2: Extract Cookies from Browser
+
+**Firefox (usually works without issues):**
+```bash
+pull-vids --cookies-from-browser firefox "https://www.youtube.com/watch?v=VIDEO_ID"
+```
+
+**Chrome:**
+```bash
+pull-vids --cookies-from-browser chrome "https://www.youtube.com/watch?v=VIDEO_ID"
+```
+
+**Safari (macOS only):**
+```bash
+pull-vids --cookies-from-browser safari "https://www.youtube.com/watch?v=VIDEO_ID"
+```
+
+**⚠️ macOS Safari Users:** If you get a permission error, you need to grant Full Disk Access:
+1. Open **System Settings** → **Privacy & Security** → **Full Disk Access**
+2. Click the **+** button and add your terminal app (Terminal.app or iTerm2)
+3. Restart your terminal
+4. Try again
+
+**⚠️ Chrome/Chromium Users:** If Chrome doesn't work, try exporting cookies manually (Option 1) or use Firefox.
+
+**Supported browsers:** `firefox`, `chrome`, `safari`, `edge`, `chromium`, `brave`, `opera`, `vivaldi`
+
+**Important:** Make sure you're logged into YouTube in the browser before extracting cookies!
+
 ### Command-Line Options
 
 ```
-usage: pull-vids [-h] [-o OUTPUT] [-q QUALITY] [-a] [-p] [-f FORMAT] [-v] [--no-banner] url
+usage: pull-vids [-h] [-o OUTPUT] [-q QUALITY] [-a] [-p] [-f FORMAT]
+                 [--cookies COOKIES] [--cookies-from-browser BROWSER]
+                 [-v] [--no-banner] url
 
 positional arguments:
   url                   Video URL from any supported site (1000+ platforms)
@@ -251,6 +298,9 @@ options:
   -p, --playlist        Download entire playlist
   -f FORMAT, --format FORMAT
                         Output format (mp4, mkv, mp3, m4a, etc.)
+  --cookies COOKIES     Path to cookies file (Netscape format)
+  --cookies-from-browser BROWSER
+                        Extract cookies from browser (chrome, firefox, safari, edge, etc.)
   -v, --version         show program's version number and exit
   --no-banner           Don't show the banner
 ```
@@ -282,6 +332,9 @@ pull-vids -a -p -o ~/Music "https://www.youtube.com/playlist?list=PLAYLIST_ID"
 
 # Download in MKV format
 pull-vids -f mkv "https://www.youtube.com/watch?v=VIDEO_ID"
+
+# Download with cookies for YouTube bot detection
+pull-vids --cookies-from-browser firefox "https://www.youtube.com/watch?v=VIDEO_ID"
 ```
 
 ## Why pull-vids?
@@ -339,6 +392,10 @@ pull-vids -f mkv "https://www.youtube.com/watch?v=VIDEO_ID"
 - The video might be region-locked or unavailable
 - Try a different quality setting
 - Check if the URL is correct
+
+**"Sign in to confirm you're not a bot" error:**
+- See the [YouTube Authentication (Cookie Support)](#youtube-authentication-cookie-support) section above
+- Use `--cookies-from-browser` or `--cookies` flag
 
 **Slow downloads:**
 - The video platform may be throttling your connection

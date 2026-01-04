@@ -15,7 +15,7 @@ import (
 	"github.com/schollz/progressbar/v3"
 )
 
-const version = "0.2.0"
+const version = "0.2.1"
 
 var (
 	cyan    = color.New(color.FgCyan)
@@ -26,14 +26,16 @@ var (
 )
 
 type Config struct {
-	URL        string
-	Output     string
-	Quality    string
-	AudioOnly  bool
-	Playlist   bool
-	Format     string
-	NoBanner   bool
-	ShowVersion bool
+	URL              string
+	Output           string
+	Quality          string
+	AudioOnly        bool
+	Playlist         bool
+	Format           string
+	NoBanner         bool
+	ShowVersion      bool
+	Cookies          string
+	CookiesFromBrowser string
 }
 
 type VideoInfo struct {
@@ -144,6 +146,13 @@ func downloadVideo(config *Config) error {
 		"--progress",
 		"-f", getFormatString(config.Quality, config.AudioOnly),
 		"-o", outputTemplate,
+	}
+
+	// Add cookie support
+	if config.CookiesFromBrowser != "" {
+		args = append(args, "--cookies-from-browser", config.CookiesFromBrowser)
+	} else if config.Cookies != "" {
+		args = append(args, "--cookies", config.Cookies)
 	}
 
 	if !config.Playlist {
@@ -319,6 +328,8 @@ func parseFlags() *Config {
 	flag.BoolVar(&config.Playlist, "playlist", false, "Download entire playlist")
 	flag.StringVar(&config.Format, "f", "", "Output format (mp4, mkv, mp3, m4a, etc.)")
 	flag.StringVar(&config.Format, "format", "", "Output format (mp4, mkv, mp3, m4a, etc.)")
+	flag.StringVar(&config.Cookies, "cookies", "", "Path to cookies file (Netscape format)")
+	flag.StringVar(&config.CookiesFromBrowser, "cookies-from-browser", "", "Extract cookies from browser (chrome, firefox, edge, safari, etc.)")
 	flag.BoolVar(&config.NoBanner, "no-banner", false, "Don't show the banner")
 	flag.BoolVar(&config.ShowVersion, "v", false, "Show version")
 	flag.BoolVar(&config.ShowVersion, "version", false, "Show version")
@@ -342,6 +353,12 @@ func parseFlags() *Config {
 		fmt.Fprintf(os.Stderr, "  pull-vids -a \"https://www.youtube.com/watch?v=VIDEO_ID\"\n\n")
 		fmt.Fprintf(os.Stderr, "  # Download in 720p quality to specific directory\n")
 		fmt.Fprintf(os.Stderr, "  pull-vids -q 720p -o ~/Videos \"https://vimeo.com/123456\"\n\n")
+		fmt.Fprintf(os.Stderr, "  # Use cookies from Chrome (fixes YouTube bot detection)\n")
+		fmt.Fprintf(os.Stderr, "  pull-vids --cookies-from-browser chrome \"https://www.youtube.com/watch?v=VIDEO_ID\"\n\n")
+		fmt.Fprintf(os.Stderr, "  # Use cookies from Safari\n")
+		fmt.Fprintf(os.Stderr, "  pull-vids --cookies-from-browser safari \"https://www.youtube.com/watch?v=VIDEO_ID\"\n\n")
+		fmt.Fprintf(os.Stderr, "  # Use cookies from file\n")
+		fmt.Fprintf(os.Stderr, "  pull-vids --cookies cookies.txt \"https://www.youtube.com/watch?v=VIDEO_ID\"\n\n")
 	}
 
 	flag.Parse()
