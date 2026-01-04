@@ -274,10 +274,40 @@ pull-vids -o ~/Videos "https://www.youtube.com/watch?v=VIDEO_ID"
 pull-vids -p "https://www.youtube.com/playlist?list=PLAYLIST_ID"
 ```
 
+### YouTube Authentication (Cookie Support)
+
+**If you get a bot detection error from YouTube**, you'll need to authenticate using cookies from your browser:
+
+**Use cookies from Chrome:**
+```bash
+pull-vids --cookies-from-browser chrome "https://www.youtube.com/watch?v=VIDEO_ID"
+```
+
+**Use cookies from Safari:**
+```bash
+pull-vids --cookies-from-browser safari "https://www.youtube.com/watch?v=VIDEO_ID"
+```
+
+**Use cookies from Firefox:**
+```bash
+pull-vids --cookies-from-browser firefox "https://www.youtube.com/watch?v=VIDEO_ID"
+```
+
+**Use cookies from a file:**
+```bash
+pull-vids --cookies cookies.txt "https://www.youtube.com/watch?v=VIDEO_ID"
+```
+
+**Supported browsers:** `chrome`, `firefox`, `safari`, `edge`, `chromium`, `brave`, `opera`, `vivaldi`
+
+**Note:** Make sure you're logged into YouTube in the browser you're extracting cookies from.
+
 ### Command-Line Options
 
 ```
-usage: pull-vids [-h] [-o OUTPUT] [-q QUALITY] [-a] [-p] [-f FORMAT] [-v] [--no-banner] url
+usage: pull-vids [-h] [-o OUTPUT] [-q QUALITY] [-a] [-p] [-f FORMAT]
+                 [--cookies COOKIES] [--cookies-from-browser BROWSER]
+                 [-v] [--no-banner] url
 
 positional arguments:
   url                   Video URL from any supported site (1000+ platforms)
@@ -293,6 +323,9 @@ options:
   -p, --playlist        Download entire playlist
   -f FORMAT, --format FORMAT
                         Output format (mp4, mkv, mp3, m4a, etc.)
+  --cookies COOKIES     Path to cookies file (Netscape format)
+  --cookies-from-browser BROWSER
+                        Extract cookies from browser (chrome, firefox, safari, edge, etc.)
   -v, --version         show program's version number and exit
   --no-banner           Don't show the banner
 ```
