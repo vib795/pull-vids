@@ -1,23 +1,14 @@
 # pull-vids
 
+[![GitHub release](https://img.shields.io/github/v/release/vib795/pull-vids)](https://github.com/vib795/pull-vids/releases)
+[![Homebrew](https://img.shields.io/badge/homebrew-vib795%2Ftap-orange)](https://github.com/vib795/homebrew-tap)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/vib795/pull-vids)](https://go.dev/)
+[![GitHub stars](https://img.shields.io/github/stars/vib795/pull-vids?style=social)](https://github.com/vib795/pull-vids/stargazers)
+
 A free, open-source CLI tool for downloading videos and audio from **1000+ websites**. Inspired by tools like Downie and PullTube, but completely free!
 
 **Built with Go for blazingly fast performance! 🚀**
-
-## 🌐 Try the Web Version!
-
-**Don't want to use the command line?** Try our web version:
-
-👉 **[pull-vids Web App](https://pull-vids.vercel.app)** (coming soon!)
-
-- ✨ No installation needed
-- 🖱️ Just paste a URL and click download
-- 📱 Works on any device
-- 🆓 Completely free
-
-*Note: Web version currently supports YouTube only. For 1000+ platforms, use the CLI below.*
-
----
 
 ## Supported Platforms
 
@@ -36,6 +27,7 @@ Works with any site supported by yt-dlp, including:
 ## Features
 
 - Download videos from 1000+ websites
+- **Cookie authentication** for YouTube bot detection bypass
 - Various quality options (360p to 4K)
 - Audio-only extraction (MP3, M4A, etc.)
 - Playlist and channel support
@@ -45,80 +37,41 @@ Works with any site supported by yt-dlp, including:
 - Fast startup - < 1ms
 - No ads, no paywalls, just downloads
 
+## Demo
+
+![Demo](demo.gif)
+
 ## Installation
 
-### ⭐ Recommended: Homebrew (macOS & Linux)
+### Package Managers (Recommended)
 
-The easiest way to install pull-vids is via Homebrew:
-
-**Step 1: Add the tap**
+**macOS (Homebrew):**
 ```bash
 brew tap vib795/tap
-```
-
-**Step 2: Install pull-vids**
-```bash
 brew install pull-vids
 ```
 
-**Step 3: Verify installation**
-```bash
-pull-vids --version
-```
-
-**That's it! 🎉** You can now download videos from 1000+ websites.
-
-**Update pull-vids:**
-```bash
-brew update
-brew upgrade pull-vids
-```
-
-**Uninstall (if needed):**
-```bash
-brew uninstall pull-vids
-brew untap vib795/tap
-```
-
----
-
-### Alternative Installation Methods
-
-<details>
-<summary><b>Windows (Chocolatey)</b></summary>
-
+**Windows (Chocolatey):**
 ```powershell
 choco install pull-vids
 ```
-</details>
 
-<details>
-<summary><b>Ubuntu/Debian (APT)</b></summary>
-
+**Ubuntu/Debian (APT):**
 ```bash
 sudo add-apt-repository ppa:vib795/pull-vids
 sudo apt update
 sudo apt install pull-vids
 ```
-</details>
 
-<details>
-<summary><b>Arch Linux (AUR)</b></summary>
-
+**Arch Linux (AUR):**
 ```bash
 yay -S pull-vids
 ```
-</details>
 
-<details>
-<summary><b>Linux (Snap)</b></summary>
-
+**Linux (Snap):**
 ```bash
 sudo snap install pull-vids
 ```
-</details>
-
----
 
 ### Quick Install Script
 
@@ -379,6 +332,9 @@ pull-vids -a -p -o ~/Music "https://www.youtube.com/playlist?list=PLAYLIST_ID"
 
 # Download in MKV format
 pull-vids -f mkv "https://www.youtube.com/watch?v=VIDEO_ID"
+
+# Download with cookies for YouTube bot detection
+pull-vids --cookies-from-browser firefox "https://www.youtube.com/watch?v=VIDEO_ID"
 ```
 
 ## Why pull-vids?
@@ -436,6 +392,10 @@ pull-vids -f mkv "https://www.youtube.com/watch?v=VIDEO_ID"
 - The video might be region-locked or unavailable
 - Try a different quality setting
 - Check if the URL is correct
+
+**"Sign in to confirm you're not a bot" error:**
+- See the [YouTube Authentication (Cookie Support)](#youtube-authentication-cookie-support) section above
+- Use `--cookies-from-browser` or `--cookies` flag
 
 **Slow downloads:**
 - The video platform may be throttling your connection
