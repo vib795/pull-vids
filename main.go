@@ -102,6 +102,39 @@ func getVideoInfo(url string) (*VideoInfo, error) {
 }
 
 func downloadVideo(config *Config) error {
+	const maxRetries = 3
+	const baseWaitTime = 30 // seconds
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		if attempt > 0 {
+			waitTime := baseWaitTime * (1 << (attempt - 1)) // Exponential backoff: 30s, 60s, 120s
+			yellow.Printf("\n⚠️  Rate limit detected. Waiting %d seconds before retry %d/%d...\n", waitTime, attempt, maxRetries)
+			time.Sleep(time.Duration(waitTime) * time.Second)
+			cyan.Println("Retrying download...")
+		}
+
+		err := executeDownload(config)
+		if err == nil {
+			return nil
+		}
+
+		// Check if it's a rate limiting error
+		if strings.Contains(err.Error(), "Sign in to confirm you're not a bot") ||
+		   strings.Contains(err.Error(), "bot") {
+			if attempt < maxRetries {
+				continue // Retry
+			}
+			return fmt.Errorf("download failed after %d retries: %w", maxRetries, err)
+		}
+
+		// For other errors, don't retry
+		return err
+	}
+
+	return fmt.Errorf("download failed after %d retries", maxRetries)
+}
+
+func executeDownload(config *Config) error {
 	// Ensure output directory exists
 	outputDir := os.ExpandEnv(config.Output)
 	if strings.HasPrefix(config.Output, "~") {
@@ -119,15 +152,17 @@ func downloadVideo(config *Config) error {
 		outputTemplate = filepath.Join(outputDir, "%(playlist)s", "%(playlist_index)s - %(title)s.%(ext)s")
 	}
 
-	cyan.Printf("Starting download from: %s\n", config.URL)
-	cyan.Printf("Output directory: %s\n", outputDir)
+	if !config.Playlist {
+		cyan.Printf("Starting download from: %s\n", config.URL)
+		cyan.Printf("Output directory: %s\n", outputDir)
 
-	if config.AudioOnly {
-		yellow.Println("Mode: Audio only")
-	} else {
-		yellow.Printf("Quality: %s\n", config.Quality)
+		if config.AudioOnly {
+			yellow.Println("Mode: Audio only")
+		} else {
+			yellow.Printf("Quality: %s\n", config.Quality)
+		}
+		fmt.Println()
 	}
-	fmt.Println()
 
 	// Get video info first
 	if !config.Playlist {
@@ -270,11 +305,13 @@ func downloadVideo(config *Config) error {
 		}
 	}()
 
-	// Read stderr for errors
+	// Read stderr for errors and capture them
+	var stderrOutput strings.Builder
 	go func() {
 		scanner := bufio.NewScanner(stderr)
 		for scanner.Scan() {
 			line := scanner.Text()
+			stderrOutput.WriteString(line + "\n")
 			if strings.Contains(line, "ERROR") {
 				fmt.Println() // New line before error
 				red.Println(line)
@@ -286,6 +323,11 @@ func downloadVideo(config *Config) error {
 	err = cmd.Wait()
 
 	if err != nil {
+		// Include stderr in error for retry logic
+		stderrStr := stderrOutput.String()
+		if stderrStr != "" {
+			return fmt.Errorf("download failed: %s", stderrStr)
+		}
 		return fmt.Errorf("download failed: %w", err)
 	}
 
