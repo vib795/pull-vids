@@ -1,7 +1,8 @@
 .PHONY: build clean install test help release build-all
 
 BINARY_NAME=pull-vids
-VERSION=$(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+# For releases, use tags only. For dev builds, fall back to commit hash
+VERSION=$(shell git describe --tags --exact-match 2>/dev/null || git describe --tags --always --dirty 2>/dev/null || echo "dev")
 GO_FILES=$(shell find . -name '*.go' -type f)
 LDFLAGS=-ldflags "-s -w -X main.version=$(VERSION)"
 
