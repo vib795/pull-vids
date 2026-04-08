@@ -28,6 +28,8 @@ Works with any site supported by yt-dlp, including:
 
 - Download videos from 1000+ websites
 - **Cookie authentication** for YouTube bot detection bypass
+- **Automatic retry** with exponential backoff for rate limiting
+- **Sleep intervals** between downloads to avoid rate limits
 - Various quality options (360p to 4K)
 - Audio-only extraction (MP3, M4A, etc.)
 - Playlist and channel support
@@ -282,7 +284,7 @@ pull-vids --cookies-from-browser safari "https://www.youtube.com/watch?v=VIDEO_I
 ```
 usage: pull-vids [-h] [-o OUTPUT] [-q QUALITY] [-a] [-p] [-f FORMAT]
                  [--cookies COOKIES] [--cookies-from-browser BROWSER]
-                 [-v] [--no-banner] url
+                 [--sleep-interval SECONDS] [-v] [--no-banner] url
 
 positional arguments:
   url                   Video URL from any supported site (1000+ platforms)
@@ -301,6 +303,8 @@ options:
   --cookies COOKIES     Path to cookies file (Netscape format)
   --cookies-from-browser BROWSER
                         Extract cookies from browser (chrome, firefox, safari, edge, etc.)
+  --sleep-interval SECONDS
+                        Sleep interval in seconds between downloads (avoids rate limiting)
   -v, --version         show program's version number and exit
   --no-banner           Don't show the banner
 ```
@@ -335,6 +339,9 @@ pull-vids -f mkv "https://www.youtube.com/watch?v=VIDEO_ID"
 
 # Download with cookies for YouTube bot detection
 pull-vids --cookies-from-browser firefox "https://www.youtube.com/watch?v=VIDEO_ID"
+
+# Download long playlist with rate limit protection
+pull-vids --cookies-from-browser firefox --sleep-interval 5 -p "https://www.youtube.com/playlist?list=PLAYLIST_ID"
 ```
 
 ## Why pull-vids?
@@ -396,6 +403,12 @@ pull-vids --cookies-from-browser firefox "https://www.youtube.com/watch?v=VIDEO_
 **"Sign in to confirm you're not a bot" error:**
 - See the [YouTube Authentication (Cookie Support)](#youtube-authentication-cookie-support) section above
 - Use `--cookies-from-browser` or `--cookies` flag
+- pull-vids will automatically retry up to 3 times with exponential backoff (30s, 60s, 120s)
+
+**Rate limiting on long playlists:**
+- Use `--sleep-interval 5` to add delays between downloads
+- Recommended: 5-10 seconds for playlists with 30+ videos
+- Automatic retry kicks in if rate limiting is detected despite the sleep interval
 
 **Slow downloads:**
 - The video platform may be throttling your connection
