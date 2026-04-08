@@ -30,15 +30,10 @@ jobs:
       - name: Generate checksums
         run: make checksums
 
-      - name: Create .deb package
-        run: make deb
-
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: |
-            dist/releases/*
-            dist/packages/*
+          files: dist/releases/*
           generate_release_notes: true
           draft: false
           prerelease: false
