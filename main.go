@@ -15,7 +15,7 @@ import (
 	"github.com/schollz/progressbar/v3"
 )
 
-const version = "0.2.1"
+const version = "0.2.2"
 
 var (
 	cyan    = color.New(color.FgCyan)
