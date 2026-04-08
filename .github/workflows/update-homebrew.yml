@@ -1,0 +1,148 @@
+name: Update Homebrew Formula
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  update-formula:
+    name: Update Homebrew Tap
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout pull-vids
+        uses: actions/checkout@v4
+
+      - name: Get release version
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      - name: Download release assets
+        run: |
+          mkdir -p /tmp/releases
+          cd /tmp/releases
+
+          # Download all tar.gz files from the release
+          gh release download ${{ steps.version.outputs.version }} \
+            --pattern "*.tar.gz" \
+            --repo ${{ github.repository }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Calculate checksums
+        id: checksums
+        run: |
+          cd /tmp/releases
+
+          DARWIN_AMD64_SHA=$(shasum -a 256 pull-vids-darwin-amd64.tar.gz | awk '{print $1}')
+          DARWIN_ARM64_SHA=$(shasum -a 256 pull-vids-darwin-arm64.tar.gz | awk '{print $1}')
+          LINUX_AMD64_SHA=$(shasum -a 256 pull-vids-linux-amd64.tar.gz | awk '{print $1}')
+          LINUX_ARM64_SHA=$(shasum -a 256 pull-vids-linux-arm64.tar.gz | awk '{print $1}')
+
+          echo "darwin_amd64_sha=$DARWIN_AMD64_SHA" >> $GITHUB_OUTPUT
+          echo "darwin_arm64_sha=$DARWIN_ARM64_SHA" >> $GITHUB_OUTPUT
+          echo "linux_amd64_sha=$LINUX_AMD64_SHA" >> $GITHUB_OUTPUT
+          echo "linux_arm64_sha=$LINUX_ARM64_SHA" >> $GITHUB_OUTPUT
+
+          echo "Checksums calculated:"
+          echo "Darwin AMD64: $DARWIN_AMD64_SHA"
+          echo "Darwin ARM64: $DARWIN_ARM64_SHA"
+          echo "Linux AMD64: $LINUX_AMD64_SHA"
+          echo "Linux ARM64: $LINUX_ARM64_SHA"
+
+      - name: Checkout homebrew-tap
+        uses: actions/checkout@v4
+        with:
+          repository: vib795/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: homebrew-tap
+
+      - name: Update formula
+        run: |
+          cd homebrew-tap
+
+          VERSION="${{ steps.version.outputs.version }}"
+
+          # Update the formula file
+          cat > Formula/pull-vids.rb << 'EOF'
+          class PullVids < Formula
+            desc "Universal video downloader CLI supporting 1000+ websites"
+            homepage "https://github.com/vib795/pull-vids"
+            license "MIT"
+
+            depends_on "ffmpeg"
+            depends_on "yt-dlp"
+
+            on_macos do
+              on_arm do
+                url "https://github.com/vib795/pull-vids/releases/download/${{ steps.version.outputs.version }}/pull-vids-darwin-arm64.tar.gz"
+                sha256 "${{ steps.checksums.outputs.darwin_arm64_sha }}"
+              end
+              on_intel do
+                url "https://github.com/vib795/pull-vids/releases/download/${{ steps.version.outputs.version }}/pull-vids-darwin-amd64.tar.gz"
+                sha256 "${{ steps.checksums.outputs.darwin_amd64_sha }}"
+              end
+            end
+
+            on_linux do
+              on_arm do
+                url "https://github.com/vib795/pull-vids/releases/download/${{ steps.version.outputs.version }}/pull-vids-linux-arm64.tar.gz"
+                sha256 "${{ steps.checksums.outputs.linux_arm64_sha }}"
+              end
+              on_intel do
+                url "https://github.com/vib795/pull-vids/releases/download/${{ steps.version.outputs.version }}/pull-vids-linux-amd64.tar.gz"
+                sha256 "${{ steps.checksums.outputs.linux_amd64_sha }}"
+              end
+            end
+
+            def install
+              binary_name = if OS.mac?
+                Hardware::CPU.arm? ? "pull-vids-darwin-arm64" : "pull-vids-darwin-amd64"
+              else
+                Hardware::CPU.arm? ? "pull-vids-linux-arm64" : "pull-vids-linux-amd64"
+              end
+
+              bin.install binary_name => "pull-vids"
+            end
+
+            test do
+              version_output = shell_output("#{bin}/pull-vids --version")
+              assert_match "pull-vids", version_output
+
+              help_output = shell_output("#{bin}/pull-vids --help 2>&1")
+              assert_match "Universal Video Downloader", help_output
+              assert_match "Supports 1000+ sites", help_output
+            end
+          end
+          EOF
+
+      - name: Commit and push
+        run: |
+          cd homebrew-tap
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add Formula/pull-vids.rb
+
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          git commit -m "Update pull-vids to ${{ steps.version.outputs.version }}
+
+          Automated update from release workflow.
+
+          Checksums:
+          - Darwin AMD64: ${{ steps.checksums.outputs.darwin_amd64_sha }}
+          - Darwin ARM64: ${{ steps.checksums.outputs.darwin_arm64_sha }}
+          - Linux AMD64: ${{ steps.checksums.outputs.linux_amd64_sha }}
+          - Linux ARM64: ${{ steps.checksums.outputs.linux_arm64_sha }}"
+
+          git push origin main
