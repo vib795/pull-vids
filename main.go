@@ -26,16 +26,17 @@ var (
 )
 
 type Config struct {
-	URL              string
-	Output           string
-	Quality          string
-	AudioOnly        bool
-	Playlist         bool
-	Format           string
-	NoBanner         bool
-	ShowVersion      bool
-	Cookies          string
+	URL                string
+	Output             string
+	Quality            string
+	AudioOnly          bool
+	Playlist           bool
+	Format             string
+	NoBanner           bool
+	ShowVersion        bool
+	Cookies            string
 	CookiesFromBrowser string
+	SleepInterval      int
 }
 
 type VideoInfo struct {
@@ -153,6 +154,11 @@ func downloadVideo(config *Config) error {
 		args = append(args, "--cookies-from-browser", config.CookiesFromBrowser)
 	} else if config.Cookies != "" {
 		args = append(args, "--cookies", config.Cookies)
+	}
+
+	// Add sleep interval to avoid rate limiting
+	if config.SleepInterval > 0 {
+		args = append(args, "--sleep-interval", fmt.Sprintf("%d", config.SleepInterval))
 	}
 
 	if !config.Playlist {
@@ -330,6 +336,7 @@ func parseFlags() *Config {
 	flag.StringVar(&config.Format, "format", "", "Output format (mp4, mkv, mp3, m4a, etc.)")
 	flag.StringVar(&config.Cookies, "cookies", "", "Path to cookies file (Netscape format)")
 	flag.StringVar(&config.CookiesFromBrowser, "cookies-from-browser", "", "Extract cookies from browser (chrome, firefox, edge, safari, etc.)")
+	flag.IntVar(&config.SleepInterval, "sleep-interval", 0, "Sleep interval in seconds between downloads (avoids rate limiting)")
 	flag.BoolVar(&config.NoBanner, "no-banner", false, "Don't show the banner")
 	flag.BoolVar(&config.ShowVersion, "v", false, "Show version")
 	flag.BoolVar(&config.ShowVersion, "version", false, "Show version")
@@ -359,6 +366,8 @@ func parseFlags() *Config {
 		fmt.Fprintf(os.Stderr, "  pull-vids --cookies-from-browser safari \"https://www.youtube.com/watch?v=VIDEO_ID\"\n\n")
 		fmt.Fprintf(os.Stderr, "  # Use cookies from file\n")
 		fmt.Fprintf(os.Stderr, "  pull-vids --cookies cookies.txt \"https://www.youtube.com/watch?v=VIDEO_ID\"\n\n")
+		fmt.Fprintf(os.Stderr, "  # Download playlist with delay to avoid rate limiting\n")
+		fmt.Fprintf(os.Stderr, "  pull-vids --cookies-from-browser firefox --sleep-interval 5 -p \"https://www.youtube.com/playlist?list=PLAYLIST_ID\"\n\n")
 	}
 
 	flag.Parse()
