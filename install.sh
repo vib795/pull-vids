@@ -96,22 +96,41 @@ if [ -z "$LATEST_RELEASE" ]; then
 else
     echo -e "${GREEN}✓ Latest release: ${LATEST_RELEASE}${NC}"
 
-    # Download binary
-    BINARY_URL="https://github.com/${REPO}/releases/download/${LATEST_RELEASE}/${BINARY_NAME}-${PLATFORM}-${ARCH}"
+    # Download and unpack the release archive. Releases ship .tar.gz archives,
+    # not bare binaries, so requesting the binary name directly returns 404.
+    ASSET_NAME="${BINARY_NAME}-${PLATFORM}-${ARCH}.tar.gz"
+    BINARY_URL="https://github.com/${REPO}/releases/download/${LATEST_RELEASE}/${ASSET_NAME}"
     TEMP_DIR=$(mktemp -d)
-    BINARY_PATH="$TEMP_DIR/$BINARY_NAME"
+    ARCHIVE_PATH="$TEMP_DIR/$ASSET_NAME"
+    BINARY_PATH="$TEMP_DIR/${BINARY_NAME}-${PLATFORM}-${ARCH}"
 
-    echo -e "${CYAN}Downloading binary...${NC}"
+    echo -e "${CYAN}Downloading ${ASSET_NAME}...${NC}"
     if [ "$DOWNLOAD_CMD" = "curl -fsSL" ]; then
-        curl -fsSL "$BINARY_URL" -o "$BINARY_PATH" || {
-            echo -e "${RED}✗ Download failed${NC}"
+        curl -fsSL "$BINARY_URL" -o "$ARCHIVE_PATH" || {
+            echo -e "${RED}✗ Download failed: ${BINARY_URL}${NC}"
             exit 1
         }
     else
-        wget -qO "$BINARY_PATH" "$BINARY_URL" || {
-            echo -e "${RED}✗ Download failed${NC}"
+        wget -qO "$ARCHIVE_PATH" "$BINARY_URL" || {
+            echo -e "${RED}✗ Download failed: ${BINARY_URL}${NC}"
             exit 1
         }
+    fi
+
+    echo -e "${CYAN}Extracting...${NC}"
+    tar -xzf "$ARCHIVE_PATH" -C "$TEMP_DIR" || {
+        echo -e "${RED}✗ Extraction failed${NC}"
+        exit 1
+    }
+
+    # Fall back to whatever executable the archive holds, in case the asset
+    # naming changes in a future release.
+    if [ ! -f "$BINARY_PATH" ]; then
+        BINARY_PATH=$(find "$TEMP_DIR" -type f ! -name '*.tar.gz' | head -1)
+        if [ -z "$BINARY_PATH" ]; then
+            echo -e "${RED}✗ No binary found inside ${ASSET_NAME}${NC}"
+            exit 1
+        fi
     fi
 fi
 

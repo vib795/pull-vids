@@ -35,16 +35,41 @@ try {
     exit 1
 }
 
-# Download binary
-$downloadUrl = "https://github.com/$REPO/releases/download/$version/$BINARY_NAME"
-$tempFile = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), $BINARY_NAME)
+# Download and unpack the release archive.
+# Releases ship a zip, not a bare .exe, so fetching "$BINARY_NAME" directly
+# returns 404 and the install fails.
+$ASSET_NAME = "pull-vids-windows-amd64.zip"
+$EXE_IN_ZIP = "pull-vids-windows-amd64.exe"
 
-Write-Host "Downloading binary..." -ForegroundColor Cyan
+$downloadUrl = "https://github.com/$REPO/releases/download/$version/$ASSET_NAME"
+$tempDir = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "pull-vids-$version")
+$tempZip = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), $ASSET_NAME)
+
+Write-Host "Downloading $ASSET_NAME..." -ForegroundColor Cyan
 try {
-    Invoke-WebRequest -Uri $downloadUrl -OutFile $tempFile
+    Invoke-WebRequest -Uri $downloadUrl -OutFile $tempZip
     Write-Host "✓ Download complete" -ForegroundColor Green
 } catch {
-    Write-Host "✗ Download failed" -ForegroundColor Red
+    Write-Host "✗ Download failed: $downloadUrl" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host "Extracting..." -ForegroundColor Cyan
+try {
+    if (Test-Path $tempDir) { Remove-Item -Path $tempDir -Recurse -Force }
+    Expand-Archive -Path $tempZip -DestinationPath $tempDir -Force
+
+    $tempFile = [System.IO.Path]::Combine($tempDir, $EXE_IN_ZIP)
+    if (-not (Test-Path $tempFile)) {
+        # Fall back to whatever .exe the archive contains, in case the asset
+        # naming changes in a future release.
+        $found = Get-ChildItem -Path $tempDir -Filter "*.exe" -Recurse | Select-Object -First 1
+        if (-not $found) { throw "no .exe found inside $ASSET_NAME" }
+        $tempFile = $found.FullName
+    }
+    Write-Host "✓ Extracted" -ForegroundColor Green
+} catch {
+    Write-Host "✗ Extraction failed: $_" -ForegroundColor Red
     exit 1
 }
 
@@ -56,7 +81,8 @@ if (-not (Test-Path $INSTALL_DIR)) {
 
 # Copy binary
 Copy-Item -Path $tempFile -Destination "$INSTALL_DIR\$BINARY_NAME" -Force
-Remove-Item -Path $tempFile
+Remove-Item -Path $tempZip -Force -ErrorAction SilentlyContinue
+Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
 
 # Add to PATH if not already there
 $currentPath = [Environment]::GetEnvironmentVariable("Path", [EnvironmentVariableTarget]::Machine)

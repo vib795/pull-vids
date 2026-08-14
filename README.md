@@ -62,38 +62,27 @@ brew install pull-vids
 > `brew upgrade` will report `pull-vids 64 already installed` and do nothing.
 > See [Troubleshooting](#troubleshooting) for why.
 
-**Windows (Chocolatey):**
-```powershell
-choco install pull-vids
+**Any platform with Go 1.24+:**
+```bash
+go install github.com/vib795/pull-vids@latest
 ```
 
-**Ubuntu/Debian (APT):**
-```bash
-sudo add-apt-repository ppa:vib795/pull-vids
-sudo apt update
-sudo apt install pull-vids
-```
-
-**Arch Linux (AUR):**
-```bash
-yay -S pull-vids
-```
-
-**Linux (Snap):**
-```bash
-sudo snap install pull-vids
-```
+> **Chocolatey, APT, AUR and Snap are not available yet.** Earlier versions of
+> this README listed them before the packages were published, so
+> `choco install pull-vids` and friends fail with "package was not found".
+> Use Homebrew, `go install`, or the install scripts below. Tracking issue:
+> [#10](https://github.com/vib795/pull-vids/issues/10).
 
 ### Quick Install Script
 
 **macOS / Linux:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/vib795/pull-vids/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/vib795/pull-vids/develop/install.sh | bash
 ```
 
 **Windows (PowerShell as Administrator):**
 ```powershell
-irm https://raw.githubusercontent.com/vib795/pull-vids/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/vib795/pull-vids/develop/install.ps1 | iex
 ```
 
 ### Manual Installation
@@ -102,41 +91,35 @@ irm https://raw.githubusercontent.com/vib795/pull-vids/main/install.ps1 | iex
 
 Download the latest release for your platform from [Releases](https://github.com/vib795/pull-vids/releases):
 
+Releases ship as compressed archives, so download and extract before installing.
+
 **macOS:**
 ```bash
-# Intel Mac
-curl -L https://github.com/vib795/pull-vids/releases/latest/download/pull-vids-darwin-amd64 -o pull-vids
-chmod +x pull-vids
-sudo mv pull-vids /usr/local/bin/
-
-# Apple Silicon (M1/M2/M3)
-curl -L https://github.com/vib795/pull-vids/releases/latest/download/pull-vids-darwin-arm64 -o pull-vids
-chmod +x pull-vids
-sudo mv pull-vids /usr/local/bin/
+# Apple Silicon (M1/M2/M3) - use darwin-amd64 on Intel
+curl -L https://github.com/vib795/pull-vids/releases/latest/download/pull-vids-darwin-arm64.tar.gz -o pull-vids.tar.gz
+tar -xzf pull-vids.tar.gz
+chmod +x pull-vids-darwin-arm64
+sudo mv pull-vids-darwin-arm64 /usr/local/bin/pull-vids
 ```
 
 **Linux:**
 ```bash
-# AMD64
-curl -L https://github.com/vib795/pull-vids/releases/latest/download/pull-vids-linux-amd64 -o pull-vids
-chmod +x pull-vids
-sudo mv pull-vids /usr/local/bin/
-
-# ARM64
-curl -L https://github.com/vib795/pull-vids/releases/latest/download/pull-vids-linux-arm64 -o pull-vids
-chmod +x pull-vids
-sudo mv pull-vids /usr/local/bin/
+# AMD64 - use linux-arm64 on ARM
+curl -L https://github.com/vib795/pull-vids/releases/latest/download/pull-vids-linux-amd64.tar.gz -o pull-vids.tar.gz
+tar -xzf pull-vids.tar.gz
+chmod +x pull-vids-linux-amd64
+sudo mv pull-vids-linux-amd64 /usr/local/bin/pull-vids
 ```
 
 **Windows:**
-1. Download [pull-vids-windows-amd64.exe](https://github.com/vib795/pull-vids/releases/latest/download/pull-vids-windows-amd64.exe)
-2. Rename to `pull-vids.exe`
-3. Move to a directory in your PATH (e.g., `C:\Program Files\pull-vids\`)
+1. Download [pull-vids-windows-amd64.zip](https://github.com/vib795/pull-vids/releases/latest/download/pull-vids-windows-amd64.zip)
+2. Extract it, then rename `pull-vids-windows-amd64.exe` to `pull-vids.exe`
+3. Move it to a directory in your PATH (e.g., `C:\Program Files\pull-vids\`)
 
 #### Option 2: Build from Source
 
 **Requirements:**
-- Go 1.18 or higher
+- Go 1.24 or higher (see `go.mod`)
 - Git
 
 **Build:**
