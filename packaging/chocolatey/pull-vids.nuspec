@@ -9,6 +9,11 @@
     <title>pull-vids (Install)</title>
     <authors>Utkarsh Singh</authors>
     <projectUrl>https://github.com/vib795/pull-vids</projectUrl>
+    <!-- CPMR0041 wants a CDN-backed icon. jsDelivr is pinned to the commit that
+         introduced assets/icon.png rather than to a branch, so the bytes behind
+         this URL can never change under an already-published package version.
+         Regenerate with assets/make-icon.py, then repoint this at the new commit. -->
+    <iconUrl>https://cdn.jsdelivr.net/gh/vib795/pull-vids@27832f3d6de3926508861ea83fa2345d5bdc3bb4/assets/icon.png</iconUrl>
     <copyright>Copyright (c) Utkarsh Singh</copyright>
     <licenseUrl>https://github.com/vib795/pull-vids/blob/develop/LICENSE</licenseUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
