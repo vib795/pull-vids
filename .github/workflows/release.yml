@@ -40,16 +40,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Update Homebrew Formula
-        run: |
-          # Calculate checksums for Homebrew
-          DARWIN_AMD64_SHA=$(shasum -a 256 dist/releases/pull-vids-darwin-amd64.tar.gz | awk '{print $1}')
-          DARWIN_ARM64_SHA=$(shasum -a 256 dist/releases/pull-vids-darwin-arm64.tar.gz | awk '{print $1}')
-          LINUX_AMD64_SHA=$(shasum -a 256 dist/releases/pull-vids-linux-amd64.tar.gz | awk '{print $1}')
-          LINUX_ARM64_SHA=$(shasum -a 256 dist/releases/pull-vids-linux-arm64.tar.gz | awk '{print $1}')
-
-          # Update Formula (would need to commit to tap repository)
-          echo "Darwin AMD64 SHA256: $DARWIN_AMD64_SHA"
-          echo "Darwin ARM64 SHA256: $DARWIN_ARM64_SHA"
-          echo "Linux AMD64 SHA256: $LINUX_AMD64_SHA"
-          echo "Linux ARM64 SHA256: $LINUX_ARM64_SHA"
+  # Creating the release above with GITHUB_TOKEN does not emit a `release`
+  # event, so the tap workflow cannot rely on that trigger. Call it directly
+  # instead, which needs no personal access token.
+  homebrew:
+    name: Update Homebrew Tap
+    needs: build
+    uses: ./.github/workflows/update-homebrew.yml
+    with:
+      tag: ${{ github.ref_name }}
+    secrets: inherit
