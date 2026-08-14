@@ -284,7 +284,9 @@ pull-vids --cookies-from-browser safari "https://www.youtube.com/watch?v=VIDEO_I
 ```
 usage: pull-vids [-h] [-o OUTPUT] [-q QUALITY] [-a] [-p] [-f FORMAT]
                  [--cookies COOKIES] [--cookies-from-browser BROWSER]
-                 [--sleep-interval SECONDS] [-v] [--no-banner] url
+                 [--sleep-interval SECONDS] [-N CONNECTIONS]
+                 [--downloader BACKEND] [--http-chunk-size SIZE]
+                 [-v] [--no-banner] url
 
 positional arguments:
   url                   Video URL from any supported site (1000+ platforms)
@@ -305,9 +307,47 @@ options:
                         Extract cookies from browser (chrome, firefox, safari, edge, etc.)
   --sleep-interval SECONDS
                         Sleep interval in seconds between downloads (avoids rate limiting)
+  -N, --connections N   Parallel connections per download (default: 8)
+  --downloader BACKEND  Transfer backend: auto, native, or aria2c (default: auto)
+  --http-chunk-size SIZE
+                        Chunk size for the native downloader (default: 10M)
   -v, --version         show program's version number and exit
   --no-banner           Don't show the banner
 ```
+
+### Download Speed
+
+Google's CDN rate-limits each TCP connection independently, at roughly 3 MB/s
+per connection. A single-stream download therefore leaves a fast link almost
+entirely idle, and adding connections scales throughput close to linearly:
+
+| Connections | Throughput |
+|-------------|------------|
+| 1           | 3.3 MB/s   |
+| 4           | 12.5 MB/s  |
+| 8           | 25.8 MB/s  |
+| 16          | 48.7 MB/s  |
+| 32          | 95.2 MB/s (saturates a 1 Gbps link) |
+
+`pull-vids` uses 8 connections by default. To go faster:
+
+```bash
+pull-vids -N 16 "https://www.youtube.com/watch?v=VIDEO_ID"
+```
+
+Two things worth knowing:
+
+- **Install `aria2` for the full benefit.** With `--downloader auto` (the
+  default), aria2c is used when available and splits any URL into parallel
+  ranged requests. Without it, the native downloader can only parallelise
+  formats that are already fragmented. Homebrew installs it as a dependency.
+- **Do not raise `-N` indefinitely.** The CDN returns HTTP 403 when the
+  connection count is too high. `pull-vids` detects this and halves the
+  connection count on each retry, but starting lower (`-N 4`) is more reliable
+  for large batches.
+
+Your storage matters too: writing to a network share caps throughput at the
+share's write speed regardless of connection count.
 
 ### Quality Options
 

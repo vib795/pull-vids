@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -15,7 +16,17 @@ import (
 	"github.com/schollz/progressbar/v3"
 )
 
-const version = "0.2.3"
+// version is overridden at build time via -ldflags "-X main.version=...".
+// It must stay a var: the linker cannot patch a const, so declaring it const
+// silently ignores the injected tag and ships the fallback value below.
+var version = "0.3.0"
+
+// aria2Progress matches aria2c's status line, capturing percent, connection
+// count, download rate and ETA:
+//
+//	[#8a1b2c 12MiB/100MiB(12%) CN:16 DL:25MiB ETA:3s]
+var aria2Progress = regexp.MustCompile(
+	`\((\d+)%\).*?CN:(\d+).*?DL:\s*([0-9.]+[KMG]?i?B)(?:.*?ETA:\s*(\S+?))?\]`)
 
 var (
 	cyan    = color.New(color.FgCyan)
@@ -37,6 +48,27 @@ type Config struct {
 	Cookies            string
 	CookiesFromBrowser string
 	SleepInterval      int
+	Connections        int
+	Downloader         string
+	ChunkSize          string
+}
+
+// resolveDownloader decides which transfer backend to use.
+// "auto" prefers aria2c when installed, because aria2c splits a single
+// contiguous media URL into parallel ranged requests. yt-dlp's native
+// downloader can only parallelise formats that are actually fragmented.
+func resolveDownloader(choice string) string {
+	switch choice {
+	case "aria2c":
+		return "aria2c"
+	case "native":
+		return "native"
+	default:
+		if _, err := exec.LookPath("aria2c"); err == nil {
+			return "aria2c"
+		}
+		return "native"
+	}
 }
 
 type VideoInfo struct {
@@ -118,9 +150,24 @@ func downloadVideo(config *Config) error {
 			return nil
 		}
 
+		// A 403 here is the CDN pushing back on concurrency, not a dead URL.
+		// Halving the connection count on each retry usually clears it, so back
+		// the parallelism off before sleeping rather than retrying identically.
+		if strings.Contains(err.Error(), "HTTP Error 403") || strings.Contains(err.Error(), "Forbidden") {
+			if attempt < maxRetries {
+				if config.Connections > 1 {
+					config.Connections /= 2
+					yellow.Printf("\n⚠️  Server rejected the request (403). Reducing to %d connection(s)...\n",
+						config.Connections)
+				}
+				continue
+			}
+			return fmt.Errorf("download failed after %d retries: %w", maxRetries, err)
+		}
+
 		// Check if it's a rate limiting error
 		if strings.Contains(err.Error(), "Sign in to confirm you're not a bot") ||
-		   strings.Contains(err.Error(), "bot") {
+			strings.Contains(err.Error(), "bot") {
 			if attempt < maxRetries {
 				continue // Retry
 			}
@@ -182,6 +229,38 @@ func executeDownload(config *Config) error {
 		"--progress",
 		"-f", getFormatString(config.Quality, config.AudioOnly),
 		"-o", outputTemplate,
+	}
+
+	// Throughput tuning.
+	//
+	// Google's CDN rate-limits each TCP connection independently (measured at
+	// roughly 3 MB/s per connection), so a single-stream download leaves a fast
+	// link almost entirely idle. Aggregate throughput scales close to linearly
+	// with the number of concurrent connections, which is what these flags buy.
+	conns := config.Connections
+	if conns < 1 {
+		conns = 1
+	}
+
+	switch resolveDownloader(config.Downloader) {
+	case "aria2c":
+		// aria2c parallelises any single URL via ranged requests, so it speeds
+		// up contiguous and fragmented formats alike. -k sets the split size;
+		// without it aria2c refuses to split ranges smaller than 20M.
+		args = append(args,
+			"--downloader", "aria2c",
+			"--downloader-args", fmt.Sprintf(
+				"aria2c:-x%d -s%d -k1M --file-allocation=none --console-log-level=warn --summary-interval=1",
+				conns, conns),
+		)
+	default:
+		// Native downloader: parallelise fragments, and request the stream in
+		// bounded chunks so a throttled connection is re-established rather
+		// than being held at its degraded rate for the whole transfer.
+		args = append(args, "--concurrent-fragments", fmt.Sprintf("%d", conns))
+		if config.ChunkSize != "" {
+			args = append(args, "--http-chunk-size", config.ChunkSize)
+		}
 	}
 
 	// Add cookie support
@@ -254,6 +333,28 @@ func executeDownload(config *Config) error {
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
 			line := scanner.Text()
+
+			// aria2c reports progress in its own format rather than yt-dlp's:
+			//   [#8a1b2c 12MiB/100MiB(12%) CN:16 DL:25MiB ETA:3s]
+			// Parse it so the bar stays live when the external downloader runs.
+			if m := aria2Progress.FindStringSubmatch(line); m != nil {
+				var percent int
+				if _, err := fmt.Sscanf(m[1], "%d", &percent); err == nil {
+					if percent > currentPercent {
+						bar.Set(percent)
+						currentPercent = percent
+					}
+				}
+				desc := fmt.Sprintf("%s (Speed: %s/s, Conns: %s",
+					green.Sprint("Downloading"),
+					cyan.Sprint(m[3]),
+					magenta.Sprint(m[2]))
+				if m[4] != "" {
+					desc += fmt.Sprintf(", ETA: %s", yellow.Sprint(m[4]))
+				}
+				bar.Describe(desc + ")")
+				continue
+			}
 
 			if strings.Contains(line, "[download]") {
 				// Parse percentage from yt-dlp output
@@ -379,6 +480,10 @@ func parseFlags() *Config {
 	flag.StringVar(&config.Cookies, "cookies", "", "Path to cookies file (Netscape format)")
 	flag.StringVar(&config.CookiesFromBrowser, "cookies-from-browser", "", "Extract cookies from browser (chrome, firefox, edge, safari, etc.)")
 	flag.IntVar(&config.SleepInterval, "sleep-interval", 0, "Sleep interval in seconds between downloads (avoids rate limiting)")
+	flag.IntVar(&config.Connections, "N", 8, "Number of parallel connections (higher = faster; backs off automatically on 403)")
+	flag.IntVar(&config.Connections, "connections", 8, "Number of parallel connections (higher = faster; backs off automatically on 403)")
+	flag.StringVar(&config.Downloader, "downloader", "auto", "Transfer backend: auto, native, or aria2c (aria2c is fastest)")
+	flag.StringVar(&config.ChunkSize, "http-chunk-size", "10M", "Chunk size for the native downloader (empty disables chunking)")
 	flag.BoolVar(&config.NoBanner, "no-banner", false, "Don't show the banner")
 	flag.BoolVar(&config.ShowVersion, "v", false, "Show version")
 	flag.BoolVar(&config.ShowVersion, "version", false, "Show version")
@@ -408,6 +513,10 @@ func parseFlags() *Config {
 		fmt.Fprintf(os.Stderr, "  pull-vids --cookies-from-browser safari \"https://www.youtube.com/watch?v=VIDEO_ID\"\n\n")
 		fmt.Fprintf(os.Stderr, "  # Use cookies from file\n")
 		fmt.Fprintf(os.Stderr, "  pull-vids --cookies cookies.txt \"https://www.youtube.com/watch?v=VIDEO_ID\"\n\n")
+		fmt.Fprintf(os.Stderr, "  # Maximise speed (Google throttles each connection, so use several)\n")
+		fmt.Fprintf(os.Stderr, "  pull-vids -N 16 \"https://www.youtube.com/watch?v=VIDEO_ID\"\n\n")
+		fmt.Fprintf(os.Stderr, "  # Force the native downloader instead of aria2c\n")
+		fmt.Fprintf(os.Stderr, "  pull-vids --downloader native -N 8 \"https://www.youtube.com/watch?v=VIDEO_ID\"\n\n")
 		fmt.Fprintf(os.Stderr, "  # Download playlist with delay to avoid rate limiting\n")
 		fmt.Fprintf(os.Stderr, "  pull-vids --cookies-from-browser firefox --sleep-interval 5 -p \"https://www.youtube.com/playlist?list=PLAYLIST_ID\"\n\n")
 	}

@@ -85,6 +85,11 @@ jobs:
             homepage "https://github.com/vib795/pull-vids"
             license "MIT"
 
+            # aria2 powers the parallel-connection downloader. Google's CDN
+            # throttles each TCP connection independently, so without it
+            # pull-vids falls back to the native downloader and only
+            # parallelises formats that are already fragmented.
+            depends_on "aria2"
             depends_on "ffmpeg"
             depends_on "yt-dlp"
 

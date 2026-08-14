@@ -19,6 +19,7 @@ downloads/
 
 # Go
 pull-vids
+pull-vids-fast
 pull-vids.exe
 *.test
 *.out
