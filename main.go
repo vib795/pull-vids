@@ -19,7 +19,7 @@ import (
 // version is overridden at build time via -ldflags "-X main.version=...".
 // It must stay a var: the linker cannot patch a const, so declaring it const
 // silently ignores the injected tag and ships the fallback value below.
-var version = "0.3.2"
+var version = "0.3.3"
 
 // aria2Progress matches aria2c's status line, capturing percent, connection
 // count, download rate and ETA:

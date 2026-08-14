@@ -46,7 +46,9 @@ jobs:
           fi
 
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Version: $VERSION"
+          # Homebrew versions carry no leading "v".
+          echo "number=${VERSION#v}" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION (formula version ${VERSION#v})"
 
       - name: Download release assets
         run: |
@@ -100,6 +102,11 @@ jobs:
             desc "Universal video downloader CLI supporting 1000+ websites"
             homepage "https://github.com/vib795/pull-vids"
             license "MIT"
+            # Declare the version explicitly. Without this Homebrew infers it
+            # from the download URL, and "pull-vids-darwin-arm64.tar.gz" yields
+            # "64" — identical for every release, so `brew upgrade` sees no new
+            # version and never replaces the installed binary.
+            version "${{ steps.version.outputs.number }}"
 
             # aria2 powers the parallel-connection downloader. Google's CDN
             # throttles each TCP connection independently, so without it
