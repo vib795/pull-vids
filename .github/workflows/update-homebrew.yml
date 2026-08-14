@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout pull-vids
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Get release version
         id: version
@@ -82,7 +82,7 @@ jobs:
           echo "Linux ARM64: $LINUX_ARM64_SHA"
 
       - name: Checkout homebrew-tap
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: vib795/homebrew-tap
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}

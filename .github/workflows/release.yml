@@ -14,12 +14,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v7
         with:
-          go-version: '1.21'
+          # Read the version from go.mod rather than pinning it here. The pinned
+          # 1.21 no longer matched go.mod's 1.24.7, and setup-go v6 tightened
+          # toolchain selection, so a stale pin can fail instead of quietly
+          # upgrading.
+          go-version-file: go.mod
 
       - name: Build binaries
         run: make build-all
@@ -31,7 +35,7 @@ jobs:
         run: make checksums
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           files: dist/releases/*
           generate_release_notes: true
