@@ -53,6 +53,15 @@ brew tap vib795/tap
 brew install pull-vids
 ```
 
+> **Upgrading from a version before 0.3.3?** Run this once, on each machine:
+>
+> ```bash
+> brew uninstall pull-vids && brew install vib795/tap/pull-vids
+> ```
+>
+> `brew upgrade` will report `pull-vids 64 already installed` and do nothing.
+> See [Troubleshooting](#troubleshooting) for why.
+
 **Windows (Chocolatey):**
 ```powershell
 choco install pull-vids
@@ -431,6 +440,28 @@ pull-vids --cookies-from-browser firefox --sleep-interval 5 -p "https://www.yout
 
 ## Troubleshooting
 
+**`brew upgrade` says "pull-vids 64 already installed" and never updates:**
+
+Run this once on the affected machine:
+
+```bash
+brew uninstall pull-vids && brew install vib795/tap/pull-vids
+```
+
+Formulas before 0.3.3 did not declare a version, so Homebrew inferred one from
+the download filename — `pull-vids-darwin-arm64.tar.gz` yields `64`. Every
+release looked like version `64`, so the binary was installed into
+`Cellar/pull-vids/64` and each new release appeared to be already installed.
+
+`brew upgrade` cannot repair this, because it compares the installed version
+against the formula version and `64` sorts higher than `0.3.4`. Homebrew
+concludes the installed copy is newer and declines. Only a fresh install
+rebuilds the keg under the correct name.
+
+Releases from 0.3.3 onward declare the version explicitly, so this is a
+one-time cleanup. Machines installing fresh are unaffected and upgrade
+normally.
+
 **"ffmpeg not found" error:**
 - Make sure ffmpeg is installed and in your PATH
 - Try running `ffmpeg -version` to verify installation
@@ -451,8 +482,12 @@ pull-vids --cookies-from-browser firefox --sleep-interval 5 -p "https://www.yout
 - Automatic retry kicks in if rate limiting is detected despite the sleep interval
 
 **Slow downloads:**
-- The video platform may be throttling your connection
-- Try downloading at a different time
+- Google's CDN throttles each connection separately, so a single stream is slow
+  no matter how fast your link is. Raise the connection count: `-N 16`
+- Install `aria2` (`brew install aria2`) if it is missing; without it pull-vids
+  falls back to a downloader that can only parallelise fragmented formats
+- Writing to a network share caps throughput at the share's write speed
+- See [Download Speed](#download-speed) for measured numbers
 - Use a different quality setting
 - Some platforms have rate limits
 
