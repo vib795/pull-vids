@@ -19,7 +19,7 @@ import (
 // version is overridden at build time via -ldflags "-X main.version=...".
 // It must stay a var: the linker cannot patch a const, so declaring it const
 // silently ignores the injected tag and ships the fallback value below.
-var version = "0.3.3"
+var version = "0.3.4"
 
 // aria2Progress matches aria2c's status line, capturing percent, connection
 // count, download rate and ETA:
@@ -244,14 +244,17 @@ func executeDownload(config *Config) error {
 
 	switch resolveDownloader(config.Downloader) {
 	case "aria2c":
-		// aria2c parallelises any single URL via ranged requests, so it speeds
-		// up contiguous and fragmented formats alike. -k sets the split size;
-		// without it aria2c refuses to split ranges smaller than 20M.
+		// -x and -s parallelise a single URL via ranged requests, which is what
+		// helps on one large contiguous file. -j is separate and just as
+		// important: yt-dlp hands aria2c a fragment list for DASH/HLS formats,
+		// and without -j aria2c fetches those fragments one at a time, which is
+		// slower than the native downloader. -k sets the split size, because
+		// aria2c will not split a range smaller than 20M by default.
 		args = append(args,
 			"--downloader", "aria2c",
 			"--downloader-args", fmt.Sprintf(
-				"aria2c:-x%d -s%d -k1M --file-allocation=none --console-log-level=warn --summary-interval=1",
-				conns, conns),
+				"aria2c:-x%d -s%d -j%d -k1M --file-allocation=none --console-log-level=warn --summary-interval=1",
+				conns, conns, conns),
 		)
 	default:
 		// Native downloader: parallelise fragments, and request the stream in
