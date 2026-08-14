@@ -54,3 +54,13 @@ jobs:
     with:
       tag: ${{ github.ref_name }}
     secrets: inherit
+
+  # Skips itself when CHOCO_API_KEY is unset, so releases stay green until the
+  # key is configured.
+  chocolatey:
+    name: Publish to Chocolatey
+    needs: build
+    uses: ./.github/workflows/publish-chocolatey.yml
+    with:
+      tag: ${{ github.ref_name }}
+    secrets: inherit

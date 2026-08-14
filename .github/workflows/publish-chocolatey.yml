@@ -1,0 +1,111 @@
+name: Publish to Chocolatey
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: 'Release tag (e.g., v0.3.5)'
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g., v0.3.5)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Pack and Push
+    # choco pack/push is Windows-only.
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # The API key is created by hand on chocolatey.org. Without it there is
+      # nothing to push to, so skip rather than fail the whole release.
+      - name: Check for API key
+        id: guard
+        shell: bash
+        env:
+          CHOCO_API_KEY: ${{ secrets.CHOCO_API_KEY }}
+        run: |
+          if [ -z "$CHOCO_API_KEY" ]; then
+            echo "enabled=false" >> $GITHUB_OUTPUT
+            echo "::notice::CHOCO_API_KEY is not set - skipping Chocolatey publish."
+          else
+            echo "enabled=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Resolve version
+        id: version
+        if: steps.guard.outputs.enabled == 'true'
+        shell: bash
+        run: |
+          TAG="${{ inputs.tag }}"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          # Chocolatey versions carry no leading "v".
+          echo "number=${TAG#v}" >> $GITHUB_OUTPUT
+
+      - name: Download release asset and compute checksum
+        id: asset
+        if: steps.guard.outputs.enabled == 'true'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = "${{ steps.version.outputs.tag }}"
+          gh release download $tag --repo ${{ github.repository }} `
+            --pattern "pull-vids-windows-amd64.zip" --dir "$env:RUNNER_TEMP"
+          if ($LASTEXITCODE -ne 0) { throw "failed to download release asset for $tag" }
+
+          $zip = Join-Path $env:RUNNER_TEMP "pull-vids-windows-amd64.zip"
+          $sha = (Get-FileHash -Path $zip -Algorithm SHA256).Hash.ToLower()
+          Write-Host "SHA256: $sha"
+          "checksum=$sha" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Substitute version and checksum
+        if: steps.guard.outputs.enabled == 'true'
+        shell: pwsh
+        run: |
+          $ver = "${{ steps.version.outputs.number }}"
+          $sum = "${{ steps.asset.outputs.checksum }}"
+          $dir = "packaging/chocolatey"
+
+          # The nuspec and install script ship with placeholders so the repo
+          # never holds a checksum that has drifted from the current release.
+          $nuspec = Join-Path $dir "pull-vids.nuspec"
+          (Get-Content $nuspec -Raw).Replace('$version$', $ver) | Set-Content $nuspec -NoNewline
+
+          $install = Join-Path $dir "tools/chocolateyinstall.ps1"
+          (Get-Content $install -Raw).Replace('$version$', $ver).Replace('$checksum$', $sum) |
+            Set-Content $install -NoNewline
+
+          Write-Host "--- chocolateyinstall.ps1 ---"
+          Get-Content $install
+
+      - name: Pack
+        if: steps.guard.outputs.enabled == 'true'
+        shell: pwsh
+        run: |
+          Set-Location packaging/chocolatey
+          choco pack
+          if ($LASTEXITCODE -ne 0) { throw "choco pack failed" }
+          Get-ChildItem *.nupkg
+
+      - name: Push
+        if: steps.guard.outputs.enabled == 'true'
+        shell: pwsh
+        env:
+          CHOCO_API_KEY: ${{ secrets.CHOCO_API_KEY }}
+        run: |
+          Set-Location packaging/chocolatey
+          $pkg = (Get-ChildItem *.nupkg | Select-Object -First 1).Name
+          Write-Host "Pushing $pkg"
+          choco push $pkg --source https://push.chocolatey.org/ --api-key "$env:CHOCO_API_KEY"
+          if ($LASTEXITCODE -ne 0) { throw "choco push failed" }
+          Write-Host "Pushed. New packages enter moderation before going live."
