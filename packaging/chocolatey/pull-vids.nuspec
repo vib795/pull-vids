@@ -12,7 +12,8 @@
     <copyright>Copyright (c) Utkarsh Singh</copyright>
     <licenseUrl>https://github.com/vib795/pull-vids/blob/develop/LICENSE</licenseUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
-    <projectSourceUrl>https://github.com/vib795/pull-vids</projectSourceUrl>
+    <!-- projectSourceUrl is deliberately omitted (CPMR0033): projectUrl already
+         points at the source repository, so duplicating it adds no information. -->
     <docsUrl>https://github.com/vib795/pull-vids#readme</docsUrl>
     <bugTrackerUrl>https://github.com/vib795/pull-vids/issues</bugTrackerUrl>
     <tags>pull-vids video downloader youtube yt-dlp cli golang</tags>
@@ -51,10 +52,19 @@ ffmpeg, yt-dlp and aria2 are installed automatically as package dependencies.
 ]]></description>
     <releaseNotes>https://github.com/vib795/pull-vids/releases</releaseNotes>
 
+    <!-- Floors are set by the features actually relied on, not by the newest
+         release (CPMR0052). A bare id would let an ancient build satisfy the
+         dependency; pinning to latest would force needless upgrades. -->
     <dependencies>
-      <dependency id="ffmpeg" />
-      <dependency id="yt-dlp" />
-      <dependency id="aria2" />
+      <!-- Only ever invoked by yt-dlp, for stream merging and audio extraction.
+           Both are long-standing, so the floor is deliberately low. -->
+      <dependency id="ffmpeg" version="4.0" />
+      <!-- Needs the downloader, downloader-args and concurrent-fragments
+           options. The floor sits well above when those landed, because
+           YouTube extractor changes break older builds in practice. -->
+      <dependency id="yt-dlp" version="2024.1.1" />
+      <!-- Needs -x/-s/-j/-k, all present since well before this release. -->
+      <dependency id="aria2" version="1.35.0" />
     </dependencies>
   </metadata>
 
