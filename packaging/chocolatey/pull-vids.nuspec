@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>pull-vids</id>
+    <version>$version$</version>
+    <packageSourceUrl>https://github.com/vib795/pull-vids/tree/develop/packaging/chocolatey</packageSourceUrl>
+    <owners>vib795</owners>
+
+    <title>pull-vids (Install)</title>
+    <authors>Utkarsh Singh</authors>
+    <projectUrl>https://github.com/vib795/pull-vids</projectUrl>
+    <copyright>Copyright (c) Utkarsh Singh</copyright>
+    <licenseUrl>https://github.com/vib795/pull-vids/blob/develop/LICENSE</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <projectSourceUrl>https://github.com/vib795/pull-vids</projectSourceUrl>
+    <docsUrl>https://github.com/vib795/pull-vids#readme</docsUrl>
+    <bugTrackerUrl>https://github.com/vib795/pull-vids/issues</bugTrackerUrl>
+    <tags>pull-vids video downloader youtube yt-dlp cli golang</tags>
+    <summary>Universal video downloader CLI supporting 1000+ websites</summary>
+    <description><![CDATA[
+pull-vids is a command-line video downloader built on yt-dlp, supporting YouTube,
+Vimeo, Twitter/X, TikTok, Instagram and 1000+ other sites.
+
+### Fast by default
+
+Google's CDN rate-limits each TCP connection independently, so a single-stream
+download leaves a fast link mostly idle. pull-vids downloads over several
+connections at once, which scales throughput close to linearly:
+
+| Connections | Throughput |
+|-------------|------------|
+| 1           | 3.3 MB/s   |
+| 8           | 25.8 MB/s  |
+| 16          | 48.7 MB/s  |
+| 32          | 95.2 MB/s  |
+
+Use `-N 16` to raise the connection count. The tool backs off automatically if
+the server starts rejecting requests.
+
+### Features
+
+* 1000+ supported sites via yt-dlp
+* Quality selection from 360p through 2160p
+* Audio-only extraction to mp3/m4a
+* Playlist downloads
+* Browser cookie support for authenticated content
+
+### Dependencies
+
+ffmpeg, yt-dlp and aria2 are installed automatically as package dependencies.
+]]></description>
+    <releaseNotes>https://github.com/vib795/pull-vids/releases</releaseNotes>
+
+    <dependencies>
+      <dependency id="ffmpeg" />
+      <dependency id="yt-dlp" />
+      <dependency id="aria2" />
+    </dependencies>
+  </metadata>
+
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
