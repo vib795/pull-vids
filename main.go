@@ -20,7 +20,7 @@ import (
 // version is overridden at build time via -ldflags "-X main.version=...".
 // It must stay a var: the linker cannot patch a const, so declaring it const
 // silently ignores the injected tag and ships the fallback value below.
-var version = "0.5.0"
+var version = "0.5.1"
 
 // infoLinePrefix marks the line yt-dlp prints, via --print, with a video's
 // duration and title. Nothing yt-dlp prints on its own starts with it.
