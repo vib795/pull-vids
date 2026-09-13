@@ -1,83 +1,78 @@
 #!/usr/bin/env bash
-# speedtest.sh — compare pull-vids download throughput across connection settings.
+# speedtest.sh — compare pull-vids download throughput between its backends.
 #
 #   ./speedtest.sh                 # use the built-in sample video
 #   ./speedtest.sh "<youtube-url>" # use your own
+#   QUALITY=720p ./speedtest.sh    # pick another quality (default 1080p)
 #
-# Each configuration downloads to a scratch directory, is timed end to end, and
-# reports effective MiB/s computed from the bytes actually written. The scratch
-# directory is removed afterwards.
+# The current source is built fresh, so the numbers always describe the code in
+# this checkout. Each configuration downloads to a scratch directory, is timed
+# end to end, and reports effective MiB/s from the bytes actually written.
 
 set -uo pipefail
 cd "$(dirname "$0")"
 
-URL="${1:-https://www.youtube.com/watch?v=aqz-KE-bpKQ}"
+URL="${1:-https://www.youtube.com/watch?v=dQw4w9WgXcQ}"
 QUALITY="${QUALITY:-1080p}"
-OLD="./pull-vids"
-NEW="./pull-vids-fast"
-
-if [ ! -x "$NEW" ]; then
-  echo "Building $NEW ..."
-  go build -o "$NEW" . || exit 1
-fi
 
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
-human() { awk -v b="$1" 'BEGIN{printf "%.1f MiB", b/1048576}'; }
+BIN="$WORK/pull-vids"
+echo "Building $BIN ..."
+go build -o "$BIN" . || exit 1
 
-# run <label> <binary> [extra args...]
+now() { python3 -c 'import time; print(time.time())'; }
+
+# Sums the sizes of the downloaded files. stat's flags differ between macOS and
+# Linux, so python3, which the timing already needs, does it portably.
+dir_bytes() {
+  python3 - "$1" <<'EOF'
+import os, sys
+print(sum(os.path.getsize(os.path.join(d, f))
+          for d, _, files in os.walk(sys.argv[1]) for f in files if f != '.log'))
+EOF
+}
+
+# run <label> [extra args...]
 run() {
-  local label="$1" bin="$2"; shift 2
+  local label="$1"; shift
   local dir="$WORK/$RANDOM$RANDOM"
   mkdir -p "$dir"
 
-  local t0 t1 bytes secs rate rc
-  t0=$(python3 -c 'import time;print(time.time())')
-  "$bin" --no-banner -q "$QUALITY" -o "$dir" "$@" "$URL" >"$dir/.log" 2>&1
+  local t0 t1 bytes rc
+  t0=$(now)
+  "$BIN" --no-banner -q "$QUALITY" -o "$dir" "$@" "$URL" >"$dir/.log" 2>&1
   rc=$?
-  t1=$(python3 -c 'import time;print(time.time())')
-
-  bytes=$(find "$dir" -type f ! -name '.log' -exec stat -f%z {} + 2>/dev/null | awk '{s+=$1} END{print s+0}')
+  t1=$(now)
+  bytes=$(dir_bytes "$dir")
 
   if [ "$rc" -ne 0 ] || [ "$bytes" -eq 0 ]; then
     printf '  %-22s FAILED  %s\n' "$label" \
       "$(grep -oiE 'ERROR:.*' "$dir/.log" | head -1 | cut -c1-70)"
-    rm -rf "$dir"; return
+  else
+    python3 -c "
+b, s = $bytes, $t1 - $t0
+print(f'  {\"$label\":<22} {s:8.2f}s  {b/1048576:6.1f} MiB  {b/1048576/s:8.2f} MiB/s')"
   fi
-
-  secs=$(python3 -c "print(f'{$t1-$t0:.2f}')")
-  rate=$(python3 -c "print(f'{$bytes/1048576/($t1-$t0):.2f}')")
-  printf '  %-22s %8ss  %10s  %8s MiB/s\n' "$label" "$secs" "$(human "$bytes")" "$rate"
   rm -rf "$dir"
 }
 
 echo
 echo "URL:     $URL"
 echo "Quality: $QUALITY"
+echo
+printf '  %-22s %9s  %10s  %14s\n' "CONFIG" "TIME" "SIZE" "THROUGHPUT"
+printf '  %s\n' "------------------------------------------------------------"
+
+run "native (default)"
 if command -v aria2c >/dev/null 2>&1; then
-  echo "aria2c:  installed ($(aria2c --version | head -1 | awk '{print $3}'))"
+  run "aria2c -N 8" --downloader aria2c -N 8
 else
-  echo "aria2c:  NOT installed  ->  brew install aria2   (unlocks the biggest gain)"
-fi
-echo
-printf '  %-22s %9s  %10s  %13s\n' "CONFIG" "TIME" "SIZE" "THROUGHPUT"
-printf '  %s\n' "------------------------------------------------------------------"
-
-# Old binary: single stream, no tuning flags. This is the current behaviour.
-[ -x "$OLD" ] && run "current (1 conn)" "$OLD"
-
-run "new: native -N 4"  "$NEW" --downloader native -N 4
-run "new: native -N 8"  "$NEW" --downloader native -N 8
-run "new: native -N 16" "$NEW" --downloader native -N 16
-
-if command -v aria2c >/dev/null 2>&1; then
-  run "new: aria2c -N 8"  "$NEW" --downloader aria2c -N 8
-  run "new: aria2c -N 16" "$NEW" --downloader aria2c -N 16
+  echo "  aria2c                 skipped (not installed)"
 fi
 
 echo
-echo "Note: YouTube throttles per connection and per IP. If you see repeated"
-echo "      failures, wait a few minutes before re-running - back-to-back runs"
-echo "      can trip rate limiting and skew the comparison."
+echo "Note: back-to-back runs can trip YouTube's rate limiting and skew the"
+echo "      comparison. If a run fails, wait a few minutes and try again."
 echo

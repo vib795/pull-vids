@@ -29,19 +29,10 @@ Vimeo, Twitter/X, TikTok, Instagram and 1000+ other sites.
 
 ### Fast by default
 
-Google's CDN rate-limits each TCP connection independently, so a single-stream
-download leaves a fast link mostly idle. pull-vids downloads over several
-connections at once, which scales throughput close to linearly:
-
-| Connections | Throughput |
-|-------------|------------|
-| 1           | 3.3 MB/s   |
-| 8           | 25.8 MB/s  |
-| 16          | 48.7 MB/s  |
-| 32          | 95.2 MB/s  |
-
-Use `-N 16` to raise the connection count. The tool backs off automatically if
-the server starts rejecting requests.
+YouTube holds a download that asks for the whole file at once to about playback
+speed. pull-vids requests streams in bounded 10 MB chunks, which YouTube serves
+at full speed, and downloads the fragments of HLS/DASH streams in parallel. If
+the server starts rejecting requests it backs off automatically.
 
 ### Features
 
@@ -54,7 +45,8 @@ the server starts rejecting requests.
 
 ### Dependencies
 
-ffmpeg, yt-dlp and aria2 are installed automatically as package dependencies.
+ffmpeg and yt-dlp are installed automatically as package dependencies.
+aria2 is optional: install it only to use `--downloader aria2c`.
 ]]></description>
     <releaseNotes>https://github.com/vib795/pull-vids/releases</releaseNotes>
 
@@ -65,12 +57,11 @@ ffmpeg, yt-dlp and aria2 are installed automatically as package dependencies.
       <!-- Only ever invoked by yt-dlp, for stream merging and audio extraction.
            Both are long-standing, so the floor is deliberately low. -->
       <dependency id="ffmpeg" version="4.0" />
-      <!-- Needs the downloader, downloader-args and concurrent-fragments
-           options. The floor sits well above when those landed, because
-           YouTube extractor changes break older builds in practice. -->
-      <dependency id="yt-dlp" version="2024.1.1" />
-      <!-- Needs -x/-s/-j/-k, all present since well before this release. -->
-      <dependency id="aria2" version="1.35.0" />
+      <!-- 2024.3.10 is the first yt-dlp release of 2024, and was checked to
+           accept every option pull-vids passes, including print with the
+           video stage alongside no-quiet and no-simulate. Newer builds are
+           still better, because YouTube extractor changes break old ones. -->
+      <dependency id="yt-dlp" version="2024.3.10" />
     </dependencies>
   </metadata>
 

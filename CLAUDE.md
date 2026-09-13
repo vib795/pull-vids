@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A Go CLI that wraps the `yt-dlp` binary: `main.go` holds the flags, download pipeline and progress parsing, and `transcript.go` holds caption handling. Both are `package main`; there are no internal packages and no abstractions — the design is intentionally flat. The program's real job is threefold: translate friendly flags into `yt-dlp` arguments, parse the subprocess's stdout into a live progress bar, and retry intelligently when a CDN pushes back.
 
-Runtime dependencies are external binaries, not Go libraries: `yt-dlp` (checked at startup by `checkYtDlp()`), `ffmpeg` (required by yt-dlp, never checked), and `aria2c` (optional, auto-detected).
+Runtime dependencies are external binaries, not Go libraries: `yt-dlp` (checked at startup by `checkYtDlp()`), `ffmpeg` (required by yt-dlp, never checked), and `aria2c` (optional, used only with `--downloader aria2c`, never a package dependency).
 
 ## Commands
 
@@ -19,31 +19,29 @@ make install      # sudo cp to /usr/local/bin
 make help         # lists all targets (this is .DEFAULT_GOAL)
 ```
 
-**Unit tests are narrow.** `transcript_test.go` covers caption parsing. `main_test.go` covers one pipeline behaviour, yt-dlp's error surviving to the retry logic, by putting a fake `yt-dlp` shell script first on `PATH`, a pattern worth reusing for other subprocess behaviour. Flags and progress parsing are untested, so a green `make test` says nothing about them. Those changes are verified by running the binary:
+**Unit tests are narrow.** `transcript_test.go` covers caption parsing. `main_test.go` covers `retryReason`, `parseInfoLine`, and one pipeline behaviour, yt-dlp's error surviving to the retry logic, by putting a fake `yt-dlp` shell script first on `PATH`, a pattern worth reusing for other subprocess behaviour. Flags and progress parsing are untested, so a green `make test` says nothing about them. Those changes are verified by running the binary:
 
 ```bash
 ./pull-vids -q 720p "https://www.youtube.com/watch?v=..."
-./pull-vids -N 16 --downloader aria2c "<url>"   # exercise the parallel path
-./pull-vids --downloader native -N 8 "<url>"    # exercise the fallback path
-./speedtest.sh                                   # benchmark both backends across -N values
+./pull-vids --downloader aria2c -N 8 "<url>"    # exercise the opt-in aria2c path
+./speedtest.sh                                   # build fresh, benchmark native vs aria2c
 ./pull-vids -t "<url>"                            # transcript only; also try -f srt and --sub-langs xx
 ```
 
-`make deb` is broken — it reads `packaging/deb/DEBIAN/*`, which does not exist in the repo.
-
 ## Throughput architecture
 
-This is the part most likely to be misunderstood. Google's CDN rate-limits **each TCP connection independently** at roughly 3 MB/s, so a single-stream download leaves a gigabit link idle. Aggregate throughput scales close to linearly with connection count (measured: 1→3.3, 8→25.8, 16→48.7, 32→95.2 MB/s). Every speed flag exists to buy more connections.
+This is the part most likely to be misunderstood. YouTube throttles by **request shape, not by connection**. A single request for a large file, whether unranged or an open-ended `Range: bytes=0-`, is held to roughly playback speed; bounded ranges of 10 MiB or less come back at full speed even on one connection. Measured with curl on one 230 MiB file: unranged 1.8 MiB/s, `bytes=0-` 1.8 MiB/s, a 10 MiB range 42.7 MiB/s. An earlier version of this file claimed Google throttled each TCP connection and that throughput scaled with connection count; that premise was wrong and led to shipping the slower backend as the default.
 
-`-N/-connections` (default 8) means different things depending on the backend selected by `resolveDownloader()`:
+`resolveDownloader()` therefore maps `auto` to **native**, and aria2c is used only when named:
 
-- **aria2c** (preferred when installed) → `--downloader-args aria2c:-xN -sN -jN -k1M ...`
-  - `-x`/`-s` split one contiguous URL into parallel ranged requests.
-  - **`-j` is separate and equally critical.** For DASH/HLS formats yt-dlp hands aria2c a *fragment list*; without `-j` aria2c fetches those fragments serially, which is **slower than the native downloader**. This was shipped broken in v0.3.0 and fixed in v0.3.4 — do not drop `-j` when editing these args.
+- **native** (default) → `--concurrent-fragments N` plus `--http-chunk-size 10M`. The chunk size is what makes YouTube fast, because it keeps every request bounded; an empty `--http-chunk-size` drops back to playback speed. `-N` only parallelises formats that are genuinely fragmented (HLS/DASH).
+- **aria2c** (opt-in) → `--downloader-args aria2c:-xN -sN -jN -k1M ...`. End to end it measured 2.6–4× slower at every size tried (19 s clip: 5.1 s vs 22.3 s; 32 MiB 1080p: 6.2 s vs 19.3 s; 232 MiB 4K: 13.3 s vs 34.8 s), partly because files below its split size go out as one unranged request. Don't make it the default again, and don't add aria2 back as a Homebrew or Chocolatey dependency, without re-measuring with `./speedtest.sh`.
+  - **`-j` is separate from `-x`/`-s` and critical.** For DASH/HLS formats yt-dlp hands aria2c a *fragment list*; without `-j` aria2c fetches those fragments serially. This was shipped broken in v0.3.0 and fixed in v0.3.4 — do not drop `-j` when editing these args.
   - `-k1M` is required because aria2c refuses to split ranges under 20M by default.
-- **native** → `--concurrent-fragments N` plus `--http-chunk-size`. This only parallelises formats that are genuinely fragmented.
 
-`downloadVideo()` wraps `executeDownload()` in a retry loop that treats **HTTP 403 as a concurrency signal, not a dead URL** — it halves `config.Connections` before each retry rather than retrying identically.
+`downloadVideo()` wraps `executeDownload()` in a retry loop driven by `retryReason()`, which treats **HTTP 403 as a concurrency signal, not a dead URL** — it halves `config.Connections` before each retry rather than retrying identically — and retries 429s and YouTube's bot check with backoff. Its patterns are exact strings on purpose: it once matched any error containing `bot`, so a URL with "robot" in it sat through 3.5 minutes of backoff before failing. When the bot check survives every retry, the final error suggests `--cookies-from-browser`.
+
+**Titles come from the download run itself**, via `--print video:` with the `infoLinePrefix` marker, parsed by `parseInfoLine()` in the stdout goroutine. A separate `--dump-json` call used to run first, costing ~1.7 s and a second YouTube request while ignoring `--cookies`. `--print` implies `--quiet` and `--simulate`, which would silence the progress lines and skip the download, so **`--no-quiet --no-simulate` must stay alongside it**. Both have existed since at least yt-dlp 2024.03.10, the Chocolatey dependency floor.
 
 Because the backend is switchable, **two progress formats must be parsed** in the stdout goroutine: yt-dlp's `[download] 45.3% of 12.34MiB at 1.23MiB/s ETA 00:10` lines, and aria2c's `[#8a1b2c 12MiB/100MiB(12%) CN:16 DL:25MiB ETA:3s]` (via the `aria2Progress` regex). Adding a backend means adding a third parser.
 
@@ -54,7 +52,7 @@ Because the backend is switchable, **two progress formats must be parsed** in th
 - **Captions land in a private temp dir, then get copied to the output dir.** yt-dlp exits 0 when a video has no captions in the requested language, so an empty temp dir is the only signal for reporting "no captions found" instead of silently succeeding.
 - **No `-f` quality selector and no throughput flags.** Format selection still runs under `--skip-download`, so a quality filter the video can't meet would fail a caption fetch. In this mode `-f` names the caption format (`txt`/`srt`/`vtt`), which is why `--merge-output-format` is guarded off.
 - **`txt` is fetched as VTT and flattened in Go** by `captionText`. YouTube's auto-generated captions scroll, so each cue repeats the previous line. The dedup rule is deliberately narrow: a repeat is dropped only when it opens a cue starting at the *exact millisecond* the previous cue ended. Measured on real tracks, all 644 scrolling repeats in a 14-minute auto-generated track matched that, while a chorus line sung twice in uploaded captions came 760ms apart. The obvious simplification, "skip any line equal to the previous one", silently deletes those real repeats. Don't reintroduce it.
-- **The "no captions" error must not contain the URL.** `downloadVideo()` retries any error containing the substring `bot`, and URLs contain it easily; a match would add 3.5 minutes of backoff to an unrecoverable error.
+- **The "no captions" error includes a ready-to-run `yt-dlp --list-subs` command with the URL.** That's safe only because `retryReason()` matches exact phrases; loosening its patterns could make this unrecoverable error retry.
 - **HTTP 429 is retried.** YouTube's caption endpoint rate-limits far more readily than video streams.
 
 The main fixture in `transcript_test.go` is a verbatim slice of a real YouTube track, and its **whitespace-only lines are load-bearing**. Tools that strip trailing whitespace have already erased them once, so the test refuses to run without them.
@@ -62,6 +60,8 @@ The main fixture in `transcript_test.go` is a verbatim slice of a real YouTube t
 ## Traps
 
 **The Makefile must build the package (`.`), not `main.go`.** `go build main.go` compiles that one file only, so it fails with undefined symbols as soon as code lives in a second file. CI runs these targets, so this breaks releases, not just local builds.
+
+**The Makefile strips the tag's leading `v` before injecting `main.version`**, because the banner prints `v%s` itself. Before v0.5.0 releases showed `vv0.4.1`.
 
 **`version` must stay a `var`.** The linker cannot patch a `const`, so declaring it const makes `-ldflags "-X main.version=..."` a silent no-op that ships the hardcoded fallback. This shipped as a real bug once.
 

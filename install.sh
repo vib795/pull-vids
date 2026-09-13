@@ -3,7 +3,7 @@
 
 set -e
 
-INSTALL_DIR="/usr/local/bin"
+INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
 REPO="vib795/pull-vids"
 BINARY_NAME="pull-vids"
 
@@ -65,7 +65,7 @@ fi
 
 # Get latest release
 echo -e "${CYAN}Fetching latest release...${NC}"
-LATEST_RELEASE=$(curl -s "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/' || echo "")
+LATEST_RELEASE=$($DOWNLOAD_CMD "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/' || echo "")
 
 if [ -z "$LATEST_RELEASE" ]; then
     echo -e "${YELLOW}No release found. Building from source...${NC}"
@@ -87,7 +87,7 @@ if [ -z "$LATEST_RELEASE" ]; then
     }
 
     echo -e "${CYAN}Building binary...${NC}"
-    go build -o "$BINARY_NAME" main.go || {
+    go build -o "$BINARY_NAME" . || {
         echo -e "${RED}✗ Build failed${NC}"
         exit 1
     }

@@ -108,11 +108,9 @@ jobs:
             # version and never replaces the installed binary.
             version "${{ steps.version.outputs.number }}"
 
-            # aria2 powers the parallel-connection downloader. Google's CDN
-            # throttles each TCP connection independently, so without it
-            # pull-vids falls back to the native downloader and only
-            # parallelises formats that are already fragmented.
-            depends_on "aria2"
+            # aria2 is deliberately not a dependency. pull-vids only uses it
+            # when asked with --downloader aria2c, because the native
+            # downloader measured faster on YouTube.
             depends_on "ffmpeg"
             depends_on "yt-dlp"
 

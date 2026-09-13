@@ -2,13 +2,13 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -20,7 +20,14 @@ import (
 // version is overridden at build time via -ldflags "-X main.version=...".
 // It must stay a var: the linker cannot patch a const, so declaring it const
 // silently ignores the injected tag and ships the fallback value below.
-var version = "0.4.1"
+var version = "0.5.0"
+
+// infoLinePrefix marks the line yt-dlp prints, via --print, with a video's
+// duration and title. Nothing yt-dlp prints on its own starts with it.
+const infoLinePrefix = "pull-vids:info\t"
+
+// botCheck is the error YouTube returns when it wants a signed-in session.
+const botCheck = "Sign in to confirm you're not a bot"
 
 // aria2Progress matches aria2c's status line, capturing percent, connection
 // count, download rate and ETA:
@@ -57,28 +64,57 @@ type Config struct {
 	SubLangs           string
 }
 
-// resolveDownloader decides which transfer backend to use.
-// "auto" prefers aria2c when installed, because aria2c splits a single
-// contiguous media URL into parallel ranged requests. yt-dlp's native
-// downloader can only parallelise formats that are actually fragmented.
+// resolveDownloader decides which transfer backend to use. "auto" means
+// native, and aria2c is used only when asked for by name.
+//
+// YouTube throttles requests by their shape rather than by connection: a
+// single request for a large file is held to roughly playback speed, while
+// bounded ranges of 10 MiB or less arrive at full speed even on one
+// connection. The native downloader keeps every request bounded via
+// --http-chunk-size. aria2c measured 2.6-4x slower end to end at every size
+// tried, from a 19-second clip to a 232 MiB 4K video, partly because anything
+// below its split size goes out as one unranged request.
 func resolveDownloader(choice string) string {
-	switch choice {
-	case "aria2c":
+	if choice == "aria2c" {
 		return "aria2c"
-	case "native":
-		return "native"
-	default:
-		if _, err := exec.LookPath("aria2c"); err == nil {
-			return "aria2c"
-		}
-		return "native"
 	}
+	return "native"
 }
 
-type VideoInfo struct {
-	Title    string  `json:"title"`
-	Duration float64 `json:"duration"`
-	Uploader string  `json:"uploader"`
+// retryReason classifies a failed download by yt-dlp's error text:
+// "forbidden" for a 403, which usually means too many connections,
+// "rate-limited" for an explicit 429 or YouTube's bot check, and "" for
+// anything retrying won't fix.
+//
+// The patterns are deliberately exact. This once matched any error containing
+// "bot", so a URL or title with "robot" or "bottle" in it spent three and a
+// half minutes backing off from an error that could never succeed.
+func retryReason(msg string) string {
+	switch {
+	case strings.Contains(msg, "HTTP Error 403"), strings.Contains(msg, "Forbidden"):
+		return "forbidden"
+	case strings.Contains(msg, "HTTP Error 429"), strings.Contains(msg, botCheck):
+		return "rate-limited"
+	}
+	return ""
+}
+
+// parseInfoLine extracts the title and a readable duration from a line
+// starting with infoLinePrefix. duration is empty when the site reports none,
+// as for a live stream, where yt-dlp prints "NA".
+func parseInfoLine(line string) (title, duration string, ok bool) {
+	rest, found := strings.CutPrefix(line, infoLinePrefix)
+	if !found {
+		return "", "", false
+	}
+	secs, title, found := strings.Cut(rest, "\t")
+	if !found {
+		return "", "", false
+	}
+	if s, err := strconv.ParseFloat(secs, 64); err == nil {
+		duration = fmt.Sprintf("%dm %ds", int(s)/60, int(s)%60)
+	}
+	return title, duration, true
 }
 
 func printBanner() {
@@ -122,21 +158,6 @@ func getFormatString(quality string, audioOnly bool) string {
 	return "bestvideo+bestaudio/best"
 }
 
-func getVideoInfo(url string) (*VideoInfo, error) {
-	cmd := exec.Command("yt-dlp", "--dump-json", "--no-playlist", url)
-	output, err := cmd.Output()
-	if err != nil {
-		return nil, err
-	}
-
-	var info VideoInfo
-	if err := json.Unmarshal(output, &info); err != nil {
-		return nil, err
-	}
-
-	return &info, nil
-}
-
 func downloadVideo(config *Config) error {
 	const maxRetries = 3
 	const baseWaitTime = 30 // seconds
@@ -144,7 +165,7 @@ func downloadVideo(config *Config) error {
 	for attempt := 0; attempt <= maxRetries; attempt++ {
 		if attempt > 0 {
 			waitTime := baseWaitTime * (1 << (attempt - 1)) // Exponential backoff: 30s, 60s, 120s
-			yellow.Printf("\n⚠️  Rate limit detected. Waiting %d seconds before retry %d/%d...\n", waitTime, attempt, maxRetries)
+			yellow.Printf("\n⚠️  Waiting %d seconds before retry %d/%d...\n", waitTime, attempt, maxRetries)
 			time.Sleep(time.Duration(waitTime) * time.Second)
 			cyan.Println("Retrying download...")
 		}
@@ -154,10 +175,12 @@ func downloadVideo(config *Config) error {
 			return nil
 		}
 
-		// A 403 here is the CDN pushing back on concurrency, not a dead URL.
-		// Halving the connection count on each retry usually clears it, so back
-		// the parallelism off before sleeping rather than retrying identically.
-		if strings.Contains(err.Error(), "HTTP Error 403") || strings.Contains(err.Error(), "Forbidden") {
+		switch retryReason(err.Error()) {
+		case "forbidden":
+			// A 403 here is the CDN pushing back on concurrency, not a dead URL.
+			// Halving the connection count on each retry usually clears it, so
+			// back the parallelism off before sleeping rather than retrying
+			// identically.
 			if attempt < maxRetries {
 				if config.Connections > 1 {
 					config.Connections /= 2
@@ -166,22 +189,20 @@ func downloadVideo(config *Config) error {
 				}
 				continue
 			}
-			return fmt.Errorf("download failed after %d retries: %w", maxRetries, err)
-		}
-
-		// Check if it's a rate limiting error. A 429 says so outright, and
-		// caption endpoints return it far more readily than media streams do.
-		if strings.Contains(err.Error(), "HTTP Error 429") ||
-			strings.Contains(err.Error(), "Sign in to confirm you're not a bot") ||
-			strings.Contains(err.Error(), "bot") {
+		case "rate-limited":
+			// A 429 says so outright, and caption endpoints return it far more
+			// readily than media streams do.
 			if attempt < maxRetries {
-				continue // Retry
+				continue
 			}
-			return fmt.Errorf("download failed after %d retries: %w", maxRetries, err)
+		default:
+			return err
 		}
 
-		// For other errors, don't retry
-		return err
+		if strings.Contains(err.Error(), botCheck) {
+			return fmt.Errorf("download failed after %d retries: %w\nYouTube wants a signed-in session; retry with --cookies-from-browser <browser>", maxRetries, err)
+		}
+		return fmt.Errorf("download failed after %d retries: %w", maxRetries, err)
 	}
 
 	return fmt.Errorf("download failed after %d retries", maxRetries)
@@ -234,23 +255,17 @@ func executeDownload(config *Config) error {
 		fmt.Println()
 	}
 
-	// Get video info first
-	if !config.Playlist {
-		info, err := getVideoInfo(config.URL)
-		if err == nil {
-			mins := int(info.Duration) / 60
-			secs := int(info.Duration) % 60
-			magenta.Printf("Title: %s\n", info.Title)
-			magenta.Printf("Duration: %dm %ds\n", mins, secs)
-			fmt.Println()
-		}
-	}
-
 	// Build yt-dlp command
 	args := []string{
 		"--newline",
 		"--progress",
 		"-o", outputTemplate,
+		// The download run reports each video's title itself, rather than a
+		// separate extraction beforehand, which cost ~1.7s and a second YouTube
+		// request and ignored --cookies. --print would otherwise imply --quiet,
+		// silencing the progress lines parsed below, and --simulate.
+		"--print", "video:" + infoLinePrefix + "%(duration)s\t%(title)s",
+		"--no-quiet", "--no-simulate",
 	}
 
 	if config.Transcript {
@@ -267,12 +282,8 @@ func executeDownload(config *Config) error {
 		}
 	}
 
-	// Throughput tuning.
-	//
-	// Google's CDN rate-limits each TCP connection independently (measured at
-	// roughly 3 MB/s per connection), so a single-stream download leaves a fast
-	// link almost entirely idle. Aggregate throughput scales close to linearly
-	// with the number of concurrent connections, which is what these flags buy.
+	// Throughput tuning. See resolveDownloader for why native is the default:
+	// the request shape, not the connection count, decides YouTube's speed.
 	conns := config.Connections
 	if conns < 1 {
 		conns = 1
@@ -288,7 +299,8 @@ func executeDownload(config *Config) error {
 		// important: yt-dlp hands aria2c a fragment list for DASH/HLS formats,
 		// and without -j aria2c fetches those fragments one at a time, which is
 		// slower than the native downloader. -k sets the split size, because
-		// aria2c will not split a range smaller than 20M by default.
+		// aria2c will not split a range smaller than 20M by default. Files below
+		// even 1M still go out as one unranged request, which YouTube throttles.
 		args = append(args,
 			"--downloader", "aria2c",
 			"--downloader-args", fmt.Sprintf(
@@ -297,8 +309,8 @@ func executeDownload(config *Config) error {
 		)
 	default:
 		// Native downloader: parallelise fragments, and request the stream in
-		// bounded chunks so a throttled connection is re-established rather
-		// than being held at its degraded rate for the whole transfer.
+		// bounded chunks, which YouTube serves at full speed. Without a chunk
+		// size the request is unbounded and throttled to about playback speed.
 		args = append(args, "--concurrent-fragments", fmt.Sprintf("%d", conns))
 		if config.ChunkSize != "" {
 			args = append(args, "--http-chunk-size", config.ChunkSize)
@@ -356,7 +368,6 @@ func executeDownload(config *Config) error {
 	bar := progressbar.NewOptions(100,
 		progressbar.OptionSetDescription(green.Sprint("Downloading")),
 		progressbar.OptionSetWidth(50),
-		progressbar.OptionShowCount(),
 		progressbar.OptionEnableColorCodes(true),
 		progressbar.OptionSetTheme(progressbar.Theme{
 			Saucer:        green.Sprint("█"),
@@ -365,8 +376,6 @@ func executeDownload(config *Config) error {
 			BarStart:      "[",
 			BarEnd:        "]",
 		}),
-		progressbar.OptionShowIts(),
-		progressbar.OptionSetItsString("%"),
 	)
 
 	var currentPercent int
@@ -384,6 +393,20 @@ func executeDownload(config *Config) error {
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
 			line := scanner.Text()
+
+			if title, duration, ok := parseInfoLine(line); ok {
+				// In a playlist this arrives after the previous video's bar was
+				// drawn, so move off that line first.
+				if currentPercent > 0 {
+					fmt.Println()
+				}
+				magenta.Printf("Title: %s\n", title)
+				if duration != "" {
+					magenta.Printf("Duration: %s\n", duration)
+				}
+				fmt.Println()
+				continue
+			}
 
 			// aria2c reports progress in its own format rather than yt-dlp's:
 			//   [#8a1b2c 12MiB/100MiB(12%) CN:16 DL:25MiB ETA:3s]
@@ -493,10 +516,8 @@ func executeDownload(config *Config) error {
 		if err != nil {
 			return fmt.Errorf("failed to save transcript: %w", err)
 		}
-		// The URL is deliberately left out of this message: downloadVideo
-		// retries any error containing "bot", which a URL can easily contain.
 		if len(written) == 0 {
-			return fmt.Errorf("no captions found for language(s) %q; run 'yt-dlp --list-subs <URL>' to see which exist", config.SubLangs)
+			return fmt.Errorf("no captions found for language(s) %q; run 'yt-dlp --list-subs \"%s\"' to see which exist", config.SubLangs, config.URL)
 		}
 	}
 
@@ -563,10 +584,10 @@ func parseFlags() *Config {
 	flag.StringVar(&config.Cookies, "cookies", "", "Path to cookies file (Netscape format)")
 	flag.StringVar(&config.CookiesFromBrowser, "cookies-from-browser", "", "Extract cookies from browser (chrome, firefox, edge, safari, etc.)")
 	flag.IntVar(&config.SleepInterval, "sleep-interval", 0, "Sleep interval in seconds between downloads (avoids rate limiting)")
-	flag.IntVar(&config.Connections, "N", 8, "Number of parallel connections (higher = faster; backs off automatically on 403)")
-	flag.IntVar(&config.Connections, "connections", 8, "Number of parallel connections (higher = faster; backs off automatically on 403)")
-	flag.StringVar(&config.Downloader, "downloader", "auto", "Transfer backend: auto, native, or aria2c (aria2c is fastest)")
-	flag.StringVar(&config.ChunkSize, "http-chunk-size", "10M", "Chunk size for the native downloader (empty disables chunking)")
+	flag.IntVar(&config.Connections, "N", 8, "Parallel fragments for HLS/DASH formats, or connections with aria2c (halved automatically on 403)")
+	flag.IntVar(&config.Connections, "connections", 8, "Parallel fragments for HLS/DASH formats, or connections with aria2c (halved automatically on 403)")
+	flag.StringVar(&config.Downloader, "downloader", "auto", "Transfer backend: auto (native, fastest for YouTube), native, or aria2c")
+	flag.StringVar(&config.ChunkSize, "http-chunk-size", "10M", "Chunk size for the native downloader (keep it set: YouTube throttles unchunked requests)")
 	flag.BoolVar(&config.NoBanner, "no-banner", false, "Don't show the banner")
 	flag.BoolVar(&config.ShowVersion, "v", false, "Show version")
 	flag.BoolVar(&config.ShowVersion, "version", false, "Show version")
@@ -602,10 +623,10 @@ func parseFlags() *Config {
 		fmt.Fprintf(os.Stderr, "  pull-vids --cookies-from-browser safari \"https://www.youtube.com/watch?v=VIDEO_ID\"\n\n")
 		fmt.Fprintf(os.Stderr, "  # Use cookies from file\n")
 		fmt.Fprintf(os.Stderr, "  pull-vids --cookies cookies.txt \"https://www.youtube.com/watch?v=VIDEO_ID\"\n\n")
-		fmt.Fprintf(os.Stderr, "  # Maximise speed (Google throttles each connection, so use several)\n")
-		fmt.Fprintf(os.Stderr, "  pull-vids -N 16 \"https://www.youtube.com/watch?v=VIDEO_ID\"\n\n")
-		fmt.Fprintf(os.Stderr, "  # Force the native downloader instead of aria2c\n")
-		fmt.Fprintf(os.Stderr, "  pull-vids --downloader native -N 8 \"https://www.youtube.com/watch?v=VIDEO_ID\"\n\n")
+		fmt.Fprintf(os.Stderr, "  # More parallel fragments for HLS/DASH streams\n")
+		fmt.Fprintf(os.Stderr, "  pull-vids -N 16 \"https://www.twitch.tv/videos/123456789\"\n\n")
+		fmt.Fprintf(os.Stderr, "  # Use aria2c instead of the native downloader\n")
+		fmt.Fprintf(os.Stderr, "  pull-vids --downloader aria2c -N 8 \"https://www.youtube.com/watch?v=VIDEO_ID\"\n\n")
 		fmt.Fprintf(os.Stderr, "  # Download playlist with delay to avoid rate limiting\n")
 		fmt.Fprintf(os.Stderr, "  pull-vids --cookies-from-browser firefox --sleep-interval 5 -p \"https://www.youtube.com/playlist?list=PLAYLIST_ID\"\n\n")
 	}

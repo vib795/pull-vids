@@ -36,8 +36,7 @@ Works with any site supported by yt-dlp, including:
 - Playlist and channel support
 - Beautiful real-time progress bars
 - Cross-platform (Windows, macOS, Linux)
-- Single binary - no dependencies to install
-- Fast startup - < 1ms
+- Single Go binary; the only runtime dependencies are yt-dlp and ffmpeg, which Homebrew and Chocolatey install for you
 - No ads, no paywalls, just downloads
 
 ## Demo
@@ -332,47 +331,52 @@ options:
                         Extract cookies from browser (chrome, firefox, safari, edge, etc.)
   --sleep-interval SECONDS
                         Sleep interval in seconds between downloads (avoids rate limiting)
-  -N, --connections N   Parallel connections per download (default: 8)
-  --downloader BACKEND  Transfer backend: auto, native, or aria2c (default: auto)
+  -N, --connections N   Parallel fragments for HLS/DASH formats, or connections
+                        with aria2c; halved automatically on 403 (default: 8)
+  --downloader BACKEND  Transfer backend: auto (native), native, or aria2c
+                        (default: auto)
   --http-chunk-size SIZE
-                        Chunk size for the native downloader (default: 10M)
+                        Chunk size for the native downloader (default: 10M;
+                        keep it set, YouTube throttles unchunked requests)
   -v, --version         show program's version number and exit
   --no-banner           Don't show the banner
 ```
 
 ### Download Speed
 
-Google's CDN rate-limits each TCP connection independently, at roughly 3 MB/s
-per connection. A single-stream download therefore leaves a fast link almost
-entirely idle, and adding connections scales throughput close to linearly:
+YouTube throttles a download by the shape of its requests, not by how many
+connections it uses. Asking for a large file in one request is held to roughly
+playback speed, while asking for it in bounded pieces of 10 MB or less is
+served at full speed, even over a single connection. On the same 230 MiB file,
+one request ran at 1.8 MiB/s and 10 MB pieces at 42.7 MiB/s.
 
-| Connections | Throughput |
-|-------------|------------|
-| 1           | 3.3 MB/s   |
-| 4           | 12.5 MB/s  |
-| 8           | 25.8 MB/s  |
-| 16          | 48.7 MB/s  |
-| 32          | 95.2 MB/s (saturates a 1 Gbps link) |
+That is why `pull-vids` uses yt-dlp's native downloader with
+`--http-chunk-size 10M` by default. aria2c is still available, but it measured
+slower end to end at every size tried, partly because anything below its split
+size goes out as one unranged request. Timings include yt-dlp's few seconds of
+page extraction:
 
-`pull-vids` uses 8 connections by default. To go faster:
+| Video                          | Size      | native (default) | `--downloader aria2c -N 8` |
+|--------------------------------|-----------|------------------|----------------------------|
+| 19-second clip                 | 0.5 MiB   | 5.1 s            | 22.3 s                     |
+| 3.5-minute music video, 1080p  | 32.3 MiB  | 6.2 s            | 19.3 s                     |
+| Same video, best quality (4K)  | 232.5 MiB | 13.3 s           | 34.8 s                     |
 
-```bash
-pull-vids -N 16 "https://www.youtube.com/watch?v=VIDEO_ID"
-```
+So there is nothing to install for speed. A few things still matter:
 
-Two things worth knowing:
+- **`-N` only helps fragmented streams.** HLS and DASH formats (Twitch, many
+  news and sports sites) arrive as many small fragments, and `-N` downloads
+  that many at once. YouTube's usual formats are single files, where the chunk
+  size, not `-N`, sets the speed.
+- **Don't clear `--http-chunk-size`.** An empty value turns chunking off and
+  puts you back at playback speed on YouTube.
+- **403 errors back off automatically.** If the server rejects a burst of
+  parallel requests, `pull-vids` halves `-N` on each retry.
+- **Storage caps everything.** Writing to a network share limits throughput
+  to the share's write speed.
 
-- **Install `aria2` for the full benefit.** With `--downloader auto` (the
-  default), aria2c is used when available and splits any URL into parallel
-  ranged requests. Without it, the native downloader can only parallelise
-  formats that are already fragmented. Homebrew installs it as a dependency.
-- **Do not raise `-N` indefinitely.** The CDN returns HTTP 403 when the
-  connection count is too high. `pull-vids` detects this and halves the
-  connection count on each retry, but starting lower (`-N 4`) is more reliable
-  for large batches.
-
-Your storage matters too: writing to a network share caps throughput at the
-share's write speed regardless of connection count.
+Run `./speedtest.sh` in a checkout to compare the backends on your own
+connection.
 
 ### Quality Options
 
@@ -384,7 +388,7 @@ share's write speed regardless of connection count.
 
 ### Format Options
 
-**Video formats:** mp4 (default), mkv, webm
+**Video formats:** by default the container follows the source (usually webm or mp4); `-f mp4`, `-f mkv` or `-f webm` picks it when streams are merged
 **Audio formats:** mp3 (default), m4a, opus, wav
 **Transcript formats (with `-t`):** txt (default), srt, vtt
 
@@ -417,8 +421,8 @@ pull-vids --cookies-from-browser firefox --sleep-interval 5 -p "https://www.yout
 - **Privacy Focused** - No tracking, no data collection
 - **Powerful** - Built on yt-dlp, supporting 1000+ video platforms
 - **Simple** - Clean CLI interface, no bloat
-- **Fast** - Compiles to a single binary with zero startup time
-- **Portable** - Single executable, no runtime dependencies
+- **Fast** - Requests streams the way YouTube serves at full speed
+- **Portable** - One executable per platform; bring yt-dlp and ffmpeg
 
 ## Limitations
 
@@ -499,10 +503,12 @@ normally.
 - Automatic retry kicks in if rate limiting is detected despite the sleep interval
 
 **Slow downloads:**
-- Google's CDN throttles each connection separately, so a single stream is slow
-  no matter how fast your link is. Raise the connection count: `-N 16`
-- Install `aria2` (`brew install aria2`) if it is missing; without it pull-vids
-  falls back to a downloader that can only parallelise fragmented formats
+- Make sure `--http-chunk-size` hasn't been set to an empty value; unchunked
+  requests are throttled to about playback speed
+- If you passed `--downloader aria2c`, drop it; the native default is faster
+  on YouTube
+- Update yt-dlp (`brew upgrade yt-dlp`, `choco upgrade yt-dlp` or
+  `pip install -U yt-dlp`); YouTube changes regularly break older builds
 - Writing to a network share caps throughput at the share's write speed
 - See [Download Speed](#download-speed) for measured numbers
 - Use a different quality setting

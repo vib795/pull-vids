@@ -1,10 +1,12 @@
-.PHONY: build clean install test help release build-all
+.PHONY: build clean install uninstall test deps run help release build-all checksums
 
 BINARY_NAME=pull-vids
-# For releases, use exact tags. For dev builds, fall back to commit hash
-VERSION=$(shell git describe --tags --exact-match 2>/dev/null || git describe --tags --always --dirty 2>/dev/null || echo "dev")
+# The tag itself on a tagged commit, otherwise tag-distance-hash or a bare hash.
+VERSION=$(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 GO_FILES=$(shell find . -name '*.go' -type f)
-LDFLAGS=-ldflags "-s -w -X main.version=$(VERSION)"
+# Tags carry a leading v, but the banner and every package manager add or want
+# the bare number, so strip it here once.
+LDFLAGS=-ldflags "-s -w -X main.version=$(patsubst v%,%,$(VERSION))"
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -13,7 +15,7 @@ help: ## Show this help message
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-15s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 build: ## Build the Go binary
-	@echo "Building $(BINARY_NAME) v$(VERSION)..."
+	@echo "Building $(BINARY_NAME) $(VERSION)..."
 	go build $(LDFLAGS) -o $(BINARY_NAME) .
 	@echo "Build complete! Binary: ./$(BINARY_NAME)"
 
@@ -66,21 +68,6 @@ deps: ## Download Go dependencies
 
 run: build ## Build and run with help
 	./$(BINARY_NAME) --help
-
-# Package creation targets
-deb: build-all ## Create .deb package for Debian/Ubuntu
-	@echo "Creating .deb package..."
-	@mkdir -p pull-vids_$(VERSION)_amd64/usr/local/bin
-	@mkdir -p pull-vids_$(VERSION)_amd64/DEBIAN
-	@cp dist/$(BINARY_NAME)-linux-amd64 pull-vids_$(VERSION)_amd64/usr/local/bin/$(BINARY_NAME)
-	@cp packaging/deb/DEBIAN/* pull-vids_$(VERSION)_amd64/DEBIAN/
-	@chmod 755 pull-vids_$(VERSION)_amd64/usr/local/bin/$(BINARY_NAME)
-	@chmod +x pull-vids_$(VERSION)_amd64/DEBIAN/postinst
-	@dpkg-deb --build pull-vids_$(VERSION)_amd64
-	@mkdir -p dist/packages
-	@mv pull-vids_$(VERSION)_amd64.deb dist/packages/
-	@rm -rf pull-vids_$(VERSION)_amd64
-	@echo "✓ Created dist/packages/pull-vids_$(VERSION)_amd64.deb"
 
 checksums: release ## Generate SHA256 checksums for releases
 	@echo "Generating checksums..."
