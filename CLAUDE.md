@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A single-file Go CLI (`main.go`, ~576 lines, `package main`) that wraps the `yt-dlp` binary. There are no internal packages and no abstractions — the design is intentionally flat. The program's real job is threefold: translate friendly flags into `yt-dlp` arguments, parse the subprocess's stdout into a live progress bar, and retry intelligently when a CDN pushes back.
+A Go CLI that wraps the `yt-dlp` binary: `main.go` holds the flags, download pipeline and progress parsing, and `transcript.go` holds caption handling. Both are `package main`; there are no internal packages and no abstractions — the design is intentionally flat. The program's real job is threefold: translate friendly flags into `yt-dlp` arguments, parse the subprocess's stdout into a live progress bar, and retry intelligently when a CDN pushes back.
 
 Runtime dependencies are external binaries, not Go libraries: `yt-dlp` (checked at startup by `checkYtDlp()`), `ffmpeg` (required by yt-dlp, never checked), and `aria2c` (optional, auto-detected).
 
@@ -19,13 +19,14 @@ make install      # sudo cp to /usr/local/bin
 make help         # lists all targets (this is .DEFAULT_GOAL)
 ```
 
-**There are no tests.** `make test` runs `go test -v ./...` against zero `_test.go` files and trivially passes — do not read a green `make test` as verification of anything. Changes are verified by running the binary:
+**Only caption parsing is unit-tested** (`transcript_test.go`). Nothing in `main.go` has tests, so a green `make test` says nothing about the download pipeline, flags or progress parsing. Those changes are verified by running the binary:
 
 ```bash
 ./pull-vids -q 720p "https://www.youtube.com/watch?v=..."
 ./pull-vids -N 16 --downloader aria2c "<url>"   # exercise the parallel path
 ./pull-vids --downloader native -N 8 "<url>"    # exercise the fallback path
 ./speedtest.sh                                   # benchmark both backends across -N values
+./pull-vids -t "<url>"                            # transcript only; also try -f srt and --sub-langs xx
 ```
 
 `make deb` is broken — it reads `packaging/deb/DEBIAN/*`, which does not exist in the repo.
@@ -46,7 +47,21 @@ This is the part most likely to be misunderstood. Google's CDN rate-limits **eac
 
 Because the backend is switchable, **two progress formats must be parsed** in the stdout goroutine: yt-dlp's `[download] 45.3% of 12.34MiB at 1.23MiB/s ETA 00:10` lines, and aria2c's `[#8a1b2c 12MiB/100MiB(12%) CN:16 DL:25MiB ETA:3s]` (via the `aria2Progress` regex). Adding a backend means adding a third parser.
 
+## Transcript mode
+
+`-t/--transcript` reuses the same `executeDownload()` pipeline with `--skip-download`, and differs in ways that each fixed or prevented a real failure:
+
+- **Captions land in a private temp dir, then get copied to the output dir.** yt-dlp exits 0 when a video has no captions in the requested language, so an empty temp dir is the only signal for reporting "no captions found" instead of silently succeeding.
+- **No `-f` quality selector and no throughput flags.** Format selection still runs under `--skip-download`, so a quality filter the video can't meet would fail a caption fetch. In this mode `-f` names the caption format (`txt`/`srt`/`vtt`), which is why `--merge-output-format` is guarded off.
+- **`txt` is fetched as VTT and flattened in Go** by `captionText`. YouTube's auto-generated captions scroll, so each cue repeats the previous line. The dedup rule is deliberately narrow: a repeat is dropped only when it opens a cue starting at the *exact millisecond* the previous cue ended. Measured on real tracks, all 644 scrolling repeats in a 14-minute auto-generated track matched that, while a chorus line sung twice in uploaded captions came 760ms apart. The obvious simplification, "skip any line equal to the previous one", silently deletes those real repeats. Don't reintroduce it.
+- **The "no captions" error must not contain the URL.** `downloadVideo()` retries any error containing the substring `bot`, and URLs contain it easily; a match would add 3.5 minutes of backoff to an unrecoverable error.
+- **HTTP 429 is retried.** YouTube's caption endpoint rate-limits far more readily than video streams.
+
+The main fixture in `transcript_test.go` is a verbatim slice of a real YouTube track, and its **whitespace-only lines are load-bearing**. Tools that strip trailing whitespace have already erased them once, so the test refuses to run without them.
+
 ## Traps
+
+**The Makefile must build the package (`.`), not `main.go`.** `go build main.go` compiles that one file only, so it fails with undefined symbols as soon as code lives in a second file. CI runs these targets, so this breaks releases, not just local builds.
 
 **`version` must stay a `var`.** The linker cannot patch a `const`, so declaring it const makes `-ldflags "-X main.version=..."` a silent no-op that ships the hardcoded fallback. This shipped as a real bug once.
 

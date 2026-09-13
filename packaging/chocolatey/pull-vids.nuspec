@@ -48,6 +48,7 @@ the server starts rejecting requests.
 * 1000+ supported sites via yt-dlp
 * Quality selection from 360p through 2160p
 * Audio-only extraction to mp3/m4a
+* Transcripts as plain text, SRT or VTT, without downloading the video
 * Playlist downloads
 * Browser cookie support for authenticated content
 

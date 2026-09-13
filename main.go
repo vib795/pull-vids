@@ -19,7 +19,7 @@ import (
 // version is overridden at build time via -ldflags "-X main.version=...".
 // It must stay a var: the linker cannot patch a const, so declaring it const
 // silently ignores the injected tag and ships the fallback value below.
-var version = "0.3.5"
+var version = "0.4.0"
 
 // aria2Progress matches aria2c's status line, capturing percent, connection
 // count, download rate and ETA:
@@ -51,6 +51,9 @@ type Config struct {
 	Connections        int
 	Downloader         string
 	ChunkSize          string
+	Transcript         bool
+	Subs               bool
+	SubLangs           string
 }
 
 // resolveDownloader decides which transfer backend to use.
@@ -165,8 +168,10 @@ func downloadVideo(config *Config) error {
 			return fmt.Errorf("download failed after %d retries: %w", maxRetries, err)
 		}
 
-		// Check if it's a rate limiting error
-		if strings.Contains(err.Error(), "Sign in to confirm you're not a bot") ||
+		// Check if it's a rate limiting error. A 429 says so outright, and
+		// caption endpoints return it far more readily than media streams do.
+		if strings.Contains(err.Error(), "HTTP Error 429") ||
+			strings.Contains(err.Error(), "Sign in to confirm you're not a bot") ||
 			strings.Contains(err.Error(), "bot") {
 			if attempt < maxRetries {
 				continue // Retry
@@ -193,17 +198,34 @@ func executeDownload(config *Config) error {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
+	// Transcripts are fetched into a private directory rather than straight
+	// into outputDir. yt-dlp exits successfully when a video has no captions
+	// in the requested language, so finding nothing there is the only way to
+	// report that instead of silently writing nothing. It also keeps the txt
+	// conversion from touching caption files the user already has.
+	fetchDir := outputDir
+	if config.Transcript {
+		workDir, err := os.MkdirTemp("", "pull-vids-transcript-")
+		if err != nil {
+			return fmt.Errorf("failed to create working directory: %w", err)
+		}
+		defer os.RemoveAll(workDir)
+		fetchDir = workDir
+	}
+
 	// Build output template
-	outputTemplate := filepath.Join(outputDir, "%(title)s.%(ext)s")
+	outputTemplate := filepath.Join(fetchDir, "%(title)s.%(ext)s")
 	if config.Playlist {
-		outputTemplate = filepath.Join(outputDir, "%(playlist)s", "%(playlist_index)s - %(title)s.%(ext)s")
+		outputTemplate = filepath.Join(fetchDir, "%(playlist)s", "%(playlist_index)s - %(title)s.%(ext)s")
 	}
 
 	if !config.Playlist {
 		cyan.Printf("Starting download from: %s\n", config.URL)
 		cyan.Printf("Output directory: %s\n", outputDir)
 
-		if config.AudioOnly {
+		if config.Transcript {
+			yellow.Printf("Mode: Transcript only (%s, languages: %s)\n", config.Format, config.SubLangs)
+		} else if config.AudioOnly {
 			yellow.Println("Mode: Audio only")
 		} else {
 			yellow.Printf("Quality: %s\n", config.Quality)
@@ -227,8 +249,21 @@ func executeDownload(config *Config) error {
 	args := []string{
 		"--newline",
 		"--progress",
-		"-f", getFormatString(config.Quality, config.AudioOnly),
 		"-o", outputTemplate,
+	}
+
+	if config.Transcript {
+		// No -f: quality means nothing without a download, yet format selection
+		// still runs under --skip-download, so a filter the video can't meet
+		// would fail the fetch. --ignore-no-formats-error likewise stops a video
+		// whose streams are unavailable from blocking captions that do exist.
+		args = append(args, "--skip-download", "--ignore-no-formats-error")
+		args = append(args, subtitleArgs(config.SubLangs, transcriptFormats[config.Format])...)
+	} else {
+		args = append(args, "-f", getFormatString(config.Quality, config.AudioOnly))
+		if config.Subs {
+			args = append(args, subtitleArgs(config.SubLangs, "srt")...)
+		}
 	}
 
 	// Throughput tuning.
@@ -242,8 +277,11 @@ func executeDownload(config *Config) error {
 		conns = 1
 	}
 
-	switch resolveDownloader(config.Downloader) {
-	case "aria2c":
+	switch {
+	case config.Transcript:
+		// Caption files are a few kilobytes, so there is no throughput to buy,
+		// and handing them to aria2c would only add a process per file.
+	case resolveDownloader(config.Downloader) == "aria2c":
 		// -x and -s parallelise a single URL via ranged requests, which is what
 		// helps on one large contiguous file. -j is separate and just as
 		// important: yt-dlp hands aria2c a fragment list for DASH/HLS formats,
@@ -288,7 +326,8 @@ func executeDownload(config *Config) error {
 			format = config.Format
 		}
 		args = append(args, "-x", "--audio-format", format, "--audio-quality", "192K")
-	} else if config.Format != "" {
+	} else if config.Format != "" && !config.Transcript {
+		// In transcript mode -f names the caption format, not a container.
 		args = append(args, "--merge-output-format", config.Format)
 	}
 
@@ -435,10 +474,36 @@ func executeDownload(config *Config) error {
 		return fmt.Errorf("download failed: %w", err)
 	}
 
+	// Transcripts are collected before the bar is forced to 100%, so a fetch
+	// that found no captions fails without first drawing a finished bar.
+	var written []string
+	if config.Transcript {
+		written, err = collectTranscripts(fetchDir, outputDir, config.Format)
+		if err != nil {
+			return fmt.Errorf("failed to save transcript: %w", err)
+		}
+		// The URL is deliberately left out of this message: downloadVideo
+		// retries any error containing "bot", which a URL can easily contain.
+		if len(written) == 0 {
+			return fmt.Errorf("no captions found for language(s) %q; run 'yt-dlp --list-subs <URL>' to see which exist", config.SubLangs)
+		}
+	}
+
 	// Ensure bar shows 100%
 	bar.Set(100)
 	bar.Finish()
 	fmt.Println()
+
+	if config.Transcript {
+		green.Println("==================================================")
+		green.Printf("✓ Saved %d transcript(s):\n", len(written))
+		for _, path := range written {
+			green.Printf("  %s\n", path)
+		}
+		green.Println("==================================================")
+		fmt.Println()
+		return nil
+	}
 
 	green.Println("==================================================")
 	green.Println("✓ Download completed successfully!")
@@ -478,8 +543,12 @@ func parseFlags() *Config {
 	flag.BoolVar(&config.AudioOnly, "audio-only", false, "Download audio only")
 	flag.BoolVar(&config.Playlist, "p", false, "Download entire playlist")
 	flag.BoolVar(&config.Playlist, "playlist", false, "Download entire playlist")
-	flag.StringVar(&config.Format, "f", "", "Output format (mp4, mkv, mp3, m4a, etc.)")
-	flag.StringVar(&config.Format, "format", "", "Output format (mp4, mkv, mp3, m4a, etc.)")
+	flag.StringVar(&config.Format, "f", "", "Output format (mp4, mkv, mp3, m4a, etc.; with -t: txt, srt or vtt)")
+	flag.StringVar(&config.Format, "format", "", "Output format (mp4, mkv, mp3, m4a, etc.; with -t: txt, srt or vtt)")
+	flag.BoolVar(&config.Transcript, "t", false, "Save the transcript only, without downloading the video (plain text unless -f says otherwise)")
+	flag.BoolVar(&config.Transcript, "transcript", false, "Save the transcript only, without downloading the video (plain text unless -f says otherwise)")
+	flag.BoolVar(&config.Subs, "subs", false, "Also save captions as .srt files alongside the video")
+	flag.StringVar(&config.SubLangs, "sub-langs", "en", "Caption languages for -t and --subs (comma-separated; yt-dlp patterns like \"en.*\" work)")
 	flag.StringVar(&config.Cookies, "cookies", "", "Path to cookies file (Netscape format)")
 	flag.StringVar(&config.CookiesFromBrowser, "cookies-from-browser", "", "Extract cookies from browser (chrome, firefox, edge, safari, etc.)")
 	flag.IntVar(&config.SleepInterval, "sleep-interval", 0, "Sleep interval in seconds between downloads (avoids rate limiting)")
@@ -508,6 +577,12 @@ func parseFlags() *Config {
 		fmt.Fprintf(os.Stderr, "  pull-vids \"https://www.tiktok.com/@user/video/123456\"\n\n")
 		fmt.Fprintf(os.Stderr, "  # Download audio only as MP3\n")
 		fmt.Fprintf(os.Stderr, "  pull-vids -a \"https://www.youtube.com/watch?v=VIDEO_ID\"\n\n")
+		fmt.Fprintf(os.Stderr, "  # Save just the transcript as plain text (no video download)\n")
+		fmt.Fprintf(os.Stderr, "  pull-vids -t \"https://www.youtube.com/watch?v=VIDEO_ID\"\n\n")
+		fmt.Fprintf(os.Stderr, "  # Transcript with timestamps, in Spanish\n")
+		fmt.Fprintf(os.Stderr, "  pull-vids -t -f srt --sub-langs es \"https://www.youtube.com/watch?v=VIDEO_ID\"\n\n")
+		fmt.Fprintf(os.Stderr, "  # Download a video with its captions saved alongside\n")
+		fmt.Fprintf(os.Stderr, "  pull-vids --subs \"https://www.youtube.com/watch?v=VIDEO_ID\"\n\n")
 		fmt.Fprintf(os.Stderr, "  # Download in 720p quality to specific directory\n")
 		fmt.Fprintf(os.Stderr, "  pull-vids -q 720p -o ~/Videos \"https://vimeo.com/123456\"\n\n")
 		fmt.Fprintf(os.Stderr, "  # Use cookies from Chrome (fixes YouTube bot detection)\n")
@@ -556,6 +631,19 @@ func main() {
 	if !strings.HasPrefix(config.URL, "http://") && !strings.HasPrefix(config.URL, "https://") {
 		red.Println("✗ Error: Invalid URL (must start with http:// or https://)")
 		os.Exit(1)
+	}
+
+	if config.Transcript {
+		if config.AudioOnly {
+			red.Println("✗ Error: -t/--transcript skips the media download, so it can't be combined with -a/--audio-only")
+			os.Exit(1)
+		}
+		format, err := transcriptFormat(config.Format)
+		if err != nil {
+			red.Printf("✗ Error: %v\n", err)
+			os.Exit(1)
+		}
+		config.Format = format
 	}
 
 	// Check if yt-dlp is installed

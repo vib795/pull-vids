@@ -32,6 +32,7 @@ Works with any site supported by yt-dlp, including:
 - **Sleep intervals** between downloads to avoid rate limits
 - Various quality options (360p to 4K)
 - Audio-only extraction (MP3, M4A, etc.)
+- **Transcripts** as plain text, SRT or VTT, without downloading the video
 - Playlist and channel support
 - Beautiful real-time progress bars
 - Cross-platform (Windows, macOS, Linux)
@@ -62,16 +63,20 @@ brew install pull-vids
 > `brew upgrade` will report `pull-vids 64 already installed` and do nothing.
 > See [Troubleshooting](#troubleshooting) for why.
 
+**Windows (Chocolatey):**
+```powershell
+choco install pull-vids
+```
+
 **Any platform with Go 1.24+:**
 ```bash
 go install github.com/vib795/pull-vids@latest
 ```
 
-> **Chocolatey, APT, AUR and Snap are not available yet.** Earlier versions of
-> this README listed them before the packages were published, so
-> `choco install pull-vids` and friends fail with "package was not found".
-> Use Homebrew, `go install`, or the install scripts below. Tracking issue:
-> [#10](https://github.com/vib795/pull-vids/issues/10).
+> **APT, AUR and Snap are not available yet.** Earlier versions of this README
+> listed them before the packages existed, so `apt install pull-vids` and
+> friends fail with "package was not found". Use Homebrew, Chocolatey,
+> `go install`, or the install scripts below.
 
 ### Quick Install Script
 
@@ -221,6 +226,30 @@ pull-vids -o ~/Videos "https://www.youtube.com/watch?v=VIDEO_ID"
 pull-vids -p "https://www.youtube.com/playlist?list=PLAYLIST_ID"
 ```
 
+### Transcripts and Captions
+
+**Save just the transcript** (no video download, plain text by default):
+```bash
+pull-vids -t "https://www.youtube.com/watch?v=VIDEO_ID"
+```
+
+**Keep the timestamps** with `-f srt` or `-f vtt`, and choose a language with `--sub-langs`:
+```bash
+pull-vids -t -f srt --sub-langs es "https://www.youtube.com/watch?v=VIDEO_ID"
+```
+
+**Download a video with its captions** saved alongside it as `.srt`:
+```bash
+pull-vids --subs "https://www.youtube.com/watch?v=VIDEO_ID"
+```
+
+Captions uploaded by the creator are used when they exist; otherwise pull-vids
+falls back to auto-generated ones. Plain-text transcripts drop the timestamps
+and markup, and remove the repeated lines that YouTube's scrolling
+auto-generated captions contain. `--sub-langs` defaults to `en`, takes
+comma-separated codes or yt-dlp patterns such as `en.*`, and
+`yt-dlp --list-subs <URL>` shows which languages a video offers.
+
 ### YouTube Authentication (Cookie Support)
 
 **If you get a bot detection error from YouTube**, you'll need to authenticate using cookies from your browser.
@@ -278,6 +307,7 @@ usage: pull-vids [-h] [-o OUTPUT] [-q QUALITY] [-a] [-p] [-f FORMAT]
                  [--cookies COOKIES] [--cookies-from-browser BROWSER]
                  [--sleep-interval SECONDS] [-N CONNECTIONS]
                  [--downloader BACKEND] [--http-chunk-size SIZE]
+                 [-t] [--subs] [--sub-langs LANGS]
                  [-v] [--no-banner] url
 
 positional arguments:
@@ -293,7 +323,10 @@ options:
   -a, --audio-only      Download audio only
   -p, --playlist        Download entire playlist
   -f FORMAT, --format FORMAT
-                        Output format (mp4, mkv, mp3, m4a, etc.)
+                        Output format (mp4, mkv, mp3, m4a, etc.; with -t: txt, srt, vtt)
+  -t, --transcript      Save the transcript only, without downloading the video
+  --subs                Also save captions as .srt files alongside the video
+  --sub-langs LANGS     Caption languages for -t and --subs (default: en)
   --cookies COOKIES     Path to cookies file (Netscape format)
   --cookies-from-browser BROWSER
                         Extract cookies from browser (chrome, firefox, safari, edge, etc.)
@@ -353,6 +386,7 @@ share's write speed regardless of connection count.
 
 **Video formats:** mp4 (default), mkv, webm
 **Audio formats:** mp3 (default), m4a, opus, wav
+**Transcript formats (with `-t`):** txt (default), srt, vtt
 
 ## Examples
 
