@@ -118,8 +118,12 @@ func parseInfoLine(line string) (title, duration string, ok bool) {
 }
 
 func printBanner() {
+	// The box is 39 columns inside. Centre the title in that, rather than
+	// padding to a fixed width, so the right edge lines up for any version.
+	title := "pull-vids v" + version
+	pad := max(39-len(title), 0)
 	cyan.Println("╔═══════════════════════════════════════╗")
-	cyan.Printf("║          pull-vids v%-8s       ║\n", version)
+	cyan.Printf("║%s%s%s║\n", strings.Repeat(" ", pad/2), title, strings.Repeat(" ", pad-pad/2))
 	cyan.Println("║  Universal Video Downloader CLI 🌐    ║")
 	cyan.Println("║   YouTube • Vimeo • Twitter • More    ║")
 	cyan.Println("╚═══════════════════════════════════════╝")
