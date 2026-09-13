@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/fatih/color"
@@ -19,7 +20,7 @@ import (
 // version is overridden at build time via -ldflags "-X main.version=...".
 // It must stay a var: the linker cannot patch a const, so declaring it const
 // silently ignores the injected tag and ships the fallback value below.
-var version = "0.4.0"
+var version = "0.4.1"
 
 // aria2Progress matches aria2c's status line, capturing percent, connection
 // count, download rate and ETA:
@@ -370,8 +371,16 @@ func executeDownload(config *Config) error {
 
 	var currentPercent int
 
+	// Both pipes must be read to EOF before cmd.Wait, which closes them the
+	// moment the process exits and discards anything still unread. yt-dlp
+	// prints its error last and then exits, so that is exactly the output at
+	// risk, and without it the retry logic can't see a 403 or 429.
+	var readers sync.WaitGroup
+	readers.Add(2)
+
 	// Read output
 	go func() {
+		defer readers.Done()
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
 			line := scanner.Text()
@@ -451,6 +460,7 @@ func executeDownload(config *Config) error {
 	// Read stderr for errors and capture them
 	var stderrOutput strings.Builder
 	go func() {
+		defer readers.Done()
 		scanner := bufio.NewScanner(stderr)
 		for scanner.Scan() {
 			line := scanner.Text()
@@ -463,6 +473,7 @@ func executeDownload(config *Config) error {
 	}()
 
 	// Wait for completion
+	readers.Wait()
 	err = cmd.Wait()
 
 	if err != nil {

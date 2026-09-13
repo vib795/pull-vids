@@ -19,7 +19,7 @@ make install      # sudo cp to /usr/local/bin
 make help         # lists all targets (this is .DEFAULT_GOAL)
 ```
 
-**Only caption parsing is unit-tested** (`transcript_test.go`). Nothing in `main.go` has tests, so a green `make test` says nothing about the download pipeline, flags or progress parsing. Those changes are verified by running the binary:
+**Unit tests are narrow.** `transcript_test.go` covers caption parsing. `main_test.go` covers one pipeline behaviour, yt-dlp's error surviving to the retry logic, by putting a fake `yt-dlp` shell script first on `PATH`, a pattern worth reusing for other subprocess behaviour. Flags and progress parsing are untested, so a green `make test` says nothing about them. Those changes are verified by running the binary:
 
 ```bash
 ./pull-vids -q 720p "https://www.youtube.com/watch?v=..."
@@ -95,7 +95,7 @@ Release checklist: bump `version` in `main.go`, commit, tag `vX.Y.Z`, push the t
 
 User-facing output goes through the package-level `color` vars (`cyan`, `green`, `yellow`, `red`, `magenta`) — never bare `fmt.Println` for messages the user reads. Errors print red and propagate to the exit code.
 
-stdout and stderr are consumed in **separate goroutines** in `executeDownload()`; reading them serially deadlocks on large output.
+stdout and stderr are consumed in **separate goroutines** in `executeDownload()`; reading them serially deadlocks on large output. Both goroutines must also reach EOF (the `readers` WaitGroup) **before** `cmd.Wait()`, which closes the pipes the moment the process exits and discards anything unread. yt-dlp prints its error last, so that is the output lost: before v0.4.1 roughly 1 in 300 failures came back as a bare `exit status 1`, and the 403/429 retry never fired.
 
 `cleanURL()` strips shell-added backslash escapes (`\?`, `\=`, `\&`, `\:`, `\/`) so unquoted URLs still work.
 
