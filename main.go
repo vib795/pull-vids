@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -20,7 +21,7 @@ import (
 // version is overridden at build time via -ldflags "-X main.version=...".
 // It must stay a var: the linker cannot patch a const, so declaring it const
 // silently ignores the injected tag and ships the fallback value below.
-var version = "0.5.1"
+var version = "0.5.2"
 
 // infoLinePrefix marks the line yt-dlp prints, via --print, with a video's
 // duration and title. Nothing yt-dlp prints on its own starts with it.
@@ -97,6 +98,35 @@ func retryReason(msg string) string {
 		return "rate-limited"
 	}
 	return ""
+}
+
+// cookieDBMissing matches yt-dlp's message when it cannot open a browser's
+// cookie store, which it reports as the database being absent:
+//
+//	ERROR: could not find chrome cookies database in "/Users/..."
+var cookieDBMissing = regexp.MustCompile(`could not find (\w+) cookies database`)
+
+// cookieHint explains a failed --cookies-from-browser read, and returns "" for
+// every other error. On macOS the file is usually right there: recent releases
+// keep one app's data out of reach of another unless it has Full Disk Access,
+// and the refused directory listing reaches yt-dlp as "not found" (confirmed on
+// macOS 27, where the Chrome cookie file existed but could not be opened).
+func cookieHint(msg, goos string) string {
+	m := cookieDBMissing.FindStringSubmatch(msg)
+	if m == nil {
+		return ""
+	}
+	browser := m[1]
+	if goos == "darwin" {
+		return fmt.Sprintf("On macOS the file is usually there but out of reach: apps need Full Disk Access to read "+
+			"another app's profile, and yt-dlp reports that refusal as a missing database.\n"+
+			"Grant it to the terminal you run pull-vids from, under System Settings > Privacy & Security > "+
+			"Full Disk Access, then quit that app completely and reopen it.\n"+
+			"If the path above is not where %s keeps its profile, pass --cookies-from-browser %s:<path>, "+
+			"or export a cookies.txt file and use --cookies <file>.", browser, browser)
+	}
+	return fmt.Sprintf("yt-dlp could not read %s's cookie store. Check that the browser is installed for this user, "+
+		"or export a cookies.txt file from it and pass --cookies <file> instead.", browser)
 }
 
 // parseInfoLine extracts the title and a readable duration from a line
@@ -200,6 +230,9 @@ func downloadVideo(config *Config) error {
 				continue
 			}
 		default:
+			if hint := cookieHint(err.Error(), runtime.GOOS); hint != "" {
+				return fmt.Errorf("%w\n\n%s", err, hint)
+			}
 			return err
 		}
 

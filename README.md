@@ -497,6 +497,18 @@ normally.
 - Use `--cookies-from-browser` or `--cookies` flag
 - pull-vids will automatically retry up to 3 times with exponential backoff (30s, 60s, 120s)
 
+**"could not find chrome cookies database" error (or safari, edge, brave):**
+- On macOS the file is almost always there. Recent macOS versions require **Full
+  Disk Access** for one app to read another app's data, and yt-dlp reports that
+  refusal as a missing database. Grant it to the terminal you run `pull-vids`
+  from, under System Settings → Privacy & Security → Full Disk Access, then quit
+  that app completely (⌘Q) and reopen it — the permission only applies to a
+  fresh launch.
+- Needs no permission at all: export a `cookies.txt` with a browser extension
+  and pass `--cookies /path/to/cookies.txt`
+- If the profile really is somewhere else:
+  `--cookies-from-browser chrome:/path/to/profile`
+
 **Rate limiting on long playlists:**
 - Use `--sleep-interval 5` to add delays between downloads
 - Recommended: 5-10 seconds for playlists with 30+ videos
